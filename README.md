@@ -8,9 +8,20 @@ The fuller report (leader and base boards, aspects, top cut, round-by-round, pai
 
 Everything runs in the browser. Uploaded files never leave your computer.
 
+## Following a live tournament
+
+Paste a melee.gg tournament link into **Follow live** and press **Follow**, then press **Refresh** after each round. Upload the tournament's standings CSV once: melee.gg hides decklists publicly during an event, so decks come from the CSV and are matched to live standings by player ID. The site remembers the decklists and the followed tournament in your browser. A link like `?t=457640` opens straight into a tournament.
+
+melee.gg doesn't let other websites read its data from the browser, so live standings come through a small Cloudflare Worker in `worker/` (https://bdst-melee-relay.bdst.workers.dev). It only answers `/tournament/<id>` and `/standings/<roundId>`, and only for this site. To redeploy it after a change:
+
+```bash
+cd worker && npx wrangler@3.114.0 deploy
+```
+
 ## Files
 
 - `index.html`: the whole app
+- `worker/`: the Cloudflare Worker that relays live standings from melee.gg
 - `cards.js`: leader and base names, aspects, art thumbnails and generic-base families from [swu-db.com](https://swu-db.com)
 - `art/`: larger leader art, loaded only when an image is generated
 - `bdst-logo.png`, `bdst-icon.png`: branding

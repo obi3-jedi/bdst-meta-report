@@ -124,6 +124,40 @@ details.row summary:focus-visible { outline: 2px solid var(--focus); outline-off
 .pilots .muted { color: var(--muted); }
 .foot { font-size: 12px; color: var(--muted); max-width: 75ch; margin: 0; }
 
+/* Live tournament */
+.live { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; }
+.live-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.live-bar label { font: italic 800 18px/1 var(--f-display); text-transform: uppercase; letter-spacing: .03em; display: flex; align-items: center; gap: 8px; }
+.live-bar label .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.live.on .live-bar label .dot { background: var(--red); box-shadow: 0 0 0 4px rgba(255, 20, 24, .2); }
+.live-bar input { flex: 1 1 260px; min-width: 0; font: 15px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; }
+.live-bar input::placeholder { color: var(--muted); }
+.live-bar .btn { padding: 9px 14px; font-size: 16px; }
+.live-bar .btn[disabled] { opacity: .6; cursor: progress; }
+.linkbtn { background: none; border: 0; color: var(--muted); font: 600 13px var(--f-body); text-decoration: underline; cursor: pointer; padding: 4px; }
+.live-status { font-size: 13px; color: var(--muted); }
+.live-status b { color: var(--ink); font-weight: 600; }
+.live-status.err { color: var(--agg); }
+
+/* Standings table */
+.filter { font: 14px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(100%, 18rem); }
+.tbl-wrap { overflow-x: auto; }
+table.st { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
+table.st th { font: 600 11px/1 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 10px 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.st td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.st tr:last-child td { border-bottom: 0; }
+table.st .r { text-align: right; }
+table.st .rk { font: 600 14px var(--f-data); color: var(--red); width: 3rem; }
+table.st .rec, table.st .pts { font: 600 14px var(--f-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.st .pl { font-weight: 600; }
+table.st .deck { display: flex; align-items: center; gap: 10px; min-width: 0; }
+table.st .deck .thumb { width: 32px; height: 32px; }
+table.st .deck .bthumb { width: 52px; height: 20px; }
+table.st .deck b { font: 600 16px/1.1 var(--f-display); letter-spacing: .02em; }
+table.st .none { color: var(--muted); }
+table.st tr.dropped td { opacity: .5; }
+.tag { font: 600 10px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; background: rgba(255, 255, 255, .1); color: var(--muted); margin-left: 6px; }
+
 /* Share modal */
 .modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; z-index: 10; }
 .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; width: min(920px, 100%); max-height: calc(100% - 32px); overflow: auto; }
@@ -156,6 +190,20 @@ details.row summary:focus-visible { outline: 2px solid var(--focus); outline-off
     </div>
   </header>
 
+  <section class="live" id="live">
+    <div class="live-bar">
+      <label for="melee-url"><span class="dot" aria-hidden="true"></span>Follow live</label>
+      <input id="melee-url" type="url" inputmode="url" placeholder="Paste a melee.gg tournament link" autocomplete="off">
+      <button class="btn ghost" id="follow" type="button">Follow</button>
+      <button class="btn" id="refresh" type="button" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        Refresh
+      </button>
+      <button class="linkbtn" id="unfollow" type="button" hidden>Stop following</button>
+    </div>
+    <div class="live-status" id="live-status">Paste the tournament link, then press Refresh after each round. Upload the tournament’s standings CSV once so players can be matched to their decklists.</div>
+  </section>
+
   <section class="stats" id="stats"></section>
 
   <section>
@@ -167,6 +215,16 @@ details.row summary:focus-visible { outline: 2px solid var(--focus); outline-off
       </div>
     </div>
     <div class="board" id="decks"></div>
+  </section>
+
+  <section id="standings-sec" hidden>
+    <div class="board">
+      <div class="bar-head">
+        <h3 id="standings-title">Standings</h3>
+        <input class="filter" id="standings-filter" type="search" placeholder="Find a player or deck" aria-label="Find a player or deck">
+      </div>
+      <div class="tbl-wrap"><table class="st" id="standings"></table></div>
+    </div>
   </section>
 
   <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted decklist aren’t counted in the breakdown. Share is each deck’s percentage of players with a decklist. If a file holds several rounds, the latest round is used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
@@ -199,7 +257,10 @@ details.row summary:focus-visible { outline: 2px solid var(--focus); outline-off
 <script>
 const SAMPLE_CSV = "Rank,TeamPlayers1DisplayName,Decklists1DecklistName,MatchRecord,GameRecord,TeamStatusDescription,MatchingMethodDescription,RoundNumber,TournamentId\n1,Player 6,\"Yoda, Sensing Darkness - Strangled Cliffs\",7-0-2,15-5-3,Active,Playoffs/Top Cut,9,sample\n2,Player 20,\"Han Solo, Worth the Risk - Shadowed Undercity\",6-2-1,14-8-3,Eliminated,Playoffs/Top Cut,9,sample\n3,Player 15,\"Iden Versio, Inferno Squad Commander - Data Vault\",5-1-2,11-5-6,Eliminated,Playoffs/Top Cut,9,sample\n4,Player 9,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",5-1-2,11-2-6,Eliminated,Playoffs/Top Cut,9,sample\n5,Player 33,\"Yoda, Sensing Darkness - Fortress Vader\",4-2-1,10-7-0,Eliminated,Playoffs/Top Cut,9,sample\n6,Player 37,\"Han Solo, Worth the Risk - Shadowed Undercity\",4-2-1,10-7-3,Eliminated,Playoffs/Top Cut,9,sample\n7,Player 28,\"Boba Fett, Any Methods Necessary - Theed Palace\",4-2-1,9-6-3,Eliminated,Playoffs/Top Cut,9,sample\n8,Player 13,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-3-0,11-7-0,Eliminated,Playoffs/Top Cut,9,sample\n9,Player 27,\"Han Solo, Never Tell Me the Odds - Tarkintown\",4-2-0,9-6-0,Cut,Playoffs/Top Cut,9,sample\n10,Player 31,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",4-2-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n11,Player 1,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-2-0,8-5-0,Cut,Playoffs/Top Cut,9,sample\n12,Player 36,\"Emperor Palpatine, Galactic Ruler - Colossus\",3-2-1,7-6-0,Cut,Playoffs/Top Cut,9,sample\n13,Player 30,\"Admiral Piett, Commanding the Armada - Nadiri Dockyards\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n14,Player 11,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n15,Player 16,\"Luke Skywalker, Hero of Yavin - Data Vault\",3-3-0,7-7-0,Cut,Playoffs/Top Cut,9,sample\n16,Player 34,\"Darth Maul, Sith Revealed - Vergence Temple\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n17,Player 35,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n18,Player 23,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",2-2-0,5-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n19,Player 18,\"Anakin Skywalker, What it Takes to Win - Shadowed Undercity\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n20,Player 22,\"Quinlan Vos, Sticking the Landing - Tarkintown\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n21,Player 8,\"Captain Phasma, Chrome Dome - Energy Conversion Lab\",2-4-0,4-9-0,Cut,Playoffs/Top Cut,9,sample\n22,Player 25,\"Han Solo, Worth the Risk - Shadowed Undercity\",2-2-0,5-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n23,Player 24,\"Yoda, Sensing Darkness - Fortress Vader\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n24,Player 14,\"Boba Fett, Any Methods Necessary - Data Vault\",2-3-0,6-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n25,Player 3,\"Boba Fett, Any Methods Necessary - Data Vault\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n26,Player 29,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",2-4-0,7-8-0,Cut,Playoffs/Top Cut,9,sample\n27,Player 32,\"Captain Phasma, Chrome Dome - Data Vault\",1-1-1,3-4-0,Dropped (Staff),Playoffs/Top Cut,9,sample\n28,Player 17,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",1-1-1,2-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n29,Player 2,\"Avar Kriss, Marshal of Starlight - Nightsister Lair\",1-1-1,4-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n30,Player 19,\"Mace Windu, Vaapad Form Master - Shadowed Undercity\",1-2-0,2-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n31,Player 12,\"Quinlan Vos, Sticking the Landing - Tarkintown\",1-2-0,3-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n32,Player 7,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",1-3-0,4-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n33,Player 5,\"Rey, Nobody - Nightsister Lair\",1-3-0,2-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n34,Player 4,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",1-2-0,2-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n35,Player 26,\"Grand Admiral Thrawn, ...How Unfortunate - Data Vault\",0-3-0,3-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n36,Player 10,[[[Decklist]]],0-3-0,0-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n37,Player 21,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",0-3-0,0-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n";
 const CARDS = window.SWU_CARDS || { leaders: {}, bases: {} };
-const state = { rounds: new Map(), tid: null, gen: true, sample: false, chart: 'treemap', format: 'wide' };
+const state = { rounds: new Map(), tid: null, gen: true, sample: false, chart: 'treemap', format: 'wide', liveId: null, live: null };
+
+// melee.gg doesn't let other sites read its data from the browser, so live standings come through a small relay (see worker/).
+const RELAY = location.hostname === 'localhost' ? 'http://localhost:8787' : 'https://bdst-melee-relay.bdst.workers.dev';
 
 // ---------- card lookup ----------
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -329,6 +390,28 @@ const finalRound = () => {
   return keys.length ? state.rounds.get(keys[keys.length - 1]) : [];
 };
 
+// Decklists from the uploaded CSV for the tournament being followed, by player ID (and by name as a fallback).
+function deckIndex() {
+  const ps = finalRound();
+  if (!state.live || state.sample || String(ps.tid) !== String(state.live.id)) return null;
+  const byId = new Map(), byName = new Map();
+  for (const p of ps) { byId.set(String(p.id), p); byName.set(p.name.toLowerCase(), p); }
+  return { byId, byName };
+}
+
+// The players everything is drawn from: live standings matched to decklists when following a tournament, otherwise the uploaded file.
+function currentPlayers() {
+  if (!state.live?.players?.length) return finalRound();
+  const idx = deckIndex();
+  return state.live.players.map(lp => {
+    const d = idx && (idx.byId.get(String(lp.playerId)) || idx.byName.get(lp.name.toLowerCase()) || idx.byName.get(lp.username.toLowerCase()));
+    return {
+      rank: lp.rank, id: String(lp.playerId), name: lp.name, record: lp.record, points: lp.points, status: lp.status,
+      leader: d ? d.leader : 'Unknown', base: d ? d.base : 'Unknown', known: !!(d && d.known), matched: !!d,
+    };
+  });
+}
+
 // Decks sorted by player count. Labels use the short leader name ("Han Solo") unless two rows would then read the same.
 function deckGroups(known) {
   genericInfo.clear();
@@ -361,7 +444,7 @@ function baseImg(name) {
 }
 
 function render() {
-  const ps = finalRound(), total = ps.length;
+  const ps = currentPlayers(), total = ps.length;
   if (!total) return;
   const known = ps.filter(p => p.known), n = known.length || 1;
   const decks = deckGroups(known);
@@ -389,6 +472,37 @@ function render() {
   }).join('');
   document.getElementById('decks').innerHTML = `<h3>Decks<small>${decks.length} different · tap a row to see who played it</small></h3>
     <div class="cols"><span>#</span><span>Leader + base</span><span>Players</span><span>Share</span></div>${rows}`;
+  renderStandings(ps, decks);
+}
+
+function renderStandings(ps, decks) {
+  const sec = document.getElementById('standings-sec');
+  sec.hidden = !state.live?.players?.length;
+  if (sec.hidden) return;
+  const labelOf = new Map();
+  for (const g of decks) for (const p of g.players) labelOf.set(p.id, g);
+  document.getElementById('standings-title').innerHTML = `Standings<small style="margin-left:10px">after ${esc(state.live.round)}</small>`;
+  const rows = ps.map(p => {
+    const g = labelOf.get(p.id);
+    const dropped = /drop/i.test(p.status);
+    const deck = g
+      ? `<div class="deck"><span class="pair">${leaderImg(g.leader)}${baseImg(g.base)}</span><b>${esc(g.label)}</b></div>`
+      : `<span class="none">${p.matched ? 'No decklist' : 'Not in uploaded file'}</span>`;
+    const find = `${p.name} ${g ? g.label : ''}`.toLowerCase();
+    return `<tr class="${dropped ? 'dropped' : ''}" data-find="${esc(find)}">
+      <td class="rk">${p.rank}</td>
+      <td class="pl">${esc(p.name)}${dropped ? '<span class="tag">Dropped</span>' : ''}</td>
+      <td class="rec">${esc(p.record)}</td>
+      <td class="pts r">${p.points ?? ''}</td>
+      <td>${deck}</td></tr>`;
+  }).join('');
+  document.getElementById('standings').innerHTML = `<thead><tr><th>#</th><th>Player</th><th>Record</th><th class="r">Pts</th><th>Deck</th></tr></thead><tbody>${rows}</tbody>`;
+  applyFilter();
+}
+
+function applyFilter() {
+  const q = document.getElementById('standings-filter').value.trim().toLowerCase();
+  document.querySelectorAll('#standings tbody tr').forEach(tr => { tr.hidden = !!q && !tr.dataset.find.includes(q); });
 }
 
 // ---------- loading ----------
@@ -418,7 +532,25 @@ function addFile(rows, isSample) {
   }
 }
 
+function saveDecks() {
+  const ps = finalRound();
+  if (state.sample || !ps.tid) return;
+  store(false, 'bdst-decks-' + ps.tid, JSON.stringify(ps.map(p => [p.id, p.name, p.leader, p.base, p.known])));
+}
+function restoreDecks(tid) {
+  try {
+    const rows = JSON.parse(store(true, 'bdst-decks-' + tid) || 'null');
+    if (!rows) return false;
+    const ps = rows.map(([id, name, leader, base, known]) => ({ rank: 9999, id, name, leader, base, known }));
+    ps.round = 0; ps.tid = String(tid);
+    state.rounds.clear(); state.rounds.set(0, ps); state.sample = false; state.tid = String(tid);
+    return true;
+  } catch (e) { return false; }
+}
+
 function afterLoad(label) {
+  saveDecks();
+  if (state.live) { renderLive(); render(); return; }
   const ps = finalRound();
   const last = Math.max(...state.rounds.keys());
   document.getElementById('evname').value = state.sample ? 'Sample event' : store(true, 'swu-ev-' + state.tid);
@@ -444,6 +576,89 @@ async function handleFiles(list) {
     for (const f of files) addFile(await readFile(f), false);
     afterLoad(files.length === 1 ? files[0].name : `${files.length} files`);
   } catch (e) { setNotice(esc(e.message || 'Could not read that file.'), true); }
+}
+
+// ---------- live following ----------
+async function relay(path) {
+  let res;
+  try { res = await fetch(RELAY + path); } catch (e) { throw new Error('Could not reach the live feed. Check your connection and try again.'); }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `The live feed answered with an error (${res.status}).`);
+  return body;
+}
+
+function parseTournament(text) {
+  const m = String(text).match(/Tournament\/View\/(\d+)/i) || String(text).trim().match(/^(\d{3,9})$/);
+  return m ? m[1] : null;
+}
+
+function setLiveStatus(html, err) {
+  const el = document.getElementById('live-status');
+  el.innerHTML = html; el.classList.toggle('err', !!err);
+}
+
+function renderLive() {
+  const on = !!state.liveId;
+  document.getElementById('live').classList.toggle('on', on && !!state.live);
+  document.getElementById('refresh').hidden = !on;
+  document.getElementById('unfollow').hidden = !on;
+  document.getElementById('follow').hidden = on;
+  if (!state.live) return;
+  const L = state.live, ps = currentPlayers();
+  const matched = ps.filter(p => p.matched).length;
+  setNotice(deckIndex()
+    ? `Decklists from the uploaded standings file (${finalRound().length} players)`
+    : 'Upload this tournament’s standings CSV to add decklists.');
+  const time = L.updated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const parts = [`<b>${esc(L.name)}</b>`];
+  parts.push(L.round ? `standings after ${esc(L.round)}` : 'no completed rounds yet');
+  if (L.current) parts.push(`${esc(L.current)} in progress`);
+  if (L.players.length) parts.push(deckIndex() ? `${matched} of ${L.players.length} players matched to a decklist` : '<b>upload this tournament’s standings CSV</b> to match players to decklists');
+  parts.push(`updated ${time}`);
+  setLiveStatus(parts.join(' · '));
+}
+
+async function refreshLive() {
+  const tid = state.liveId; if (!tid) return;
+  const btn = document.getElementById('refresh');
+  btn.disabled = true;
+  setLiveStatus('Checking melee.gg…');
+  try {
+    const t = await relay('/tournament/' + tid);
+    const done = t.rounds.filter(r => r.completed);
+    const last = done[done.length - 1];
+    const current = t.rounds.find(r => r.started && !r.completed);
+    const players = last ? (await relay('/standings/' + last.id)).players : [];
+    state.live = { id: String(tid), name: t.name, round: last?.name || null, current: current?.name || null, players, updated: new Date() };
+    // Use decklists uploaded earlier for this tournament if the current file is for a different one.
+    if (String(finalRound().tid) !== String(tid) || state.sample) restoreDecks(tid);
+    const ev = document.getElementById('evname');
+    ev.value = store(true, 'swu-ev-' + tid) || t.name;
+    state.tid = String(tid);
+    renderLive();
+    render();
+  } catch (e) {
+    setLiveStatus(esc(e.message), true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function follow(tid) {
+  state.liveId = String(tid);
+  store(false, 'bdst-live', state.liveId);
+  document.getElementById('melee-url').value = `https://melee.gg/Tournament/View/${tid}`;
+  renderLive();
+  return refreshLive();
+}
+
+function unfollow() {
+  state.liveId = null; state.live = null;
+  store(false, 'bdst-live', '');
+  document.getElementById('melee-url').value = '';
+  setLiveStatus('Paste the tournament link, then press Refresh after each round. Upload the tournament’s standings CSV once so players can be matched to their decklists.');
+  renderLive();
+  if (state.rounds.size) afterLoad();
 }
 
 // ---------- share image (16:9): framed table on the left, art ring on the right ----------
@@ -684,7 +899,7 @@ async function drawBackground(ctx, W, H, groups, art) {
 }
 
 async function makeImage() {
-  const ps = finalRound(); if (!ps.length) return null;
+  const ps = currentPlayers(); if (!ps.length) return null;
   await Promise.all(['italic 800 80px "Barlow Condensed"', '700 40px "Barlow Condensed"', '600 22px Barlow', '700 22px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
   const known = ps.filter(p => p.known), total = ps.length, n = known.length || 1;
   const groups = deckGroups(known);
@@ -891,8 +1106,24 @@ document.getElementById('dl').addEventListener('click', async () => {
   a.click();
 });
 
+document.getElementById('follow').addEventListener('click', () => {
+  const tid = parseTournament(document.getElementById('melee-url').value);
+  if (!tid) { setLiveStatus('That doesn’t look like a melee.gg tournament link. It should look like https://melee.gg/Tournament/View/457640.', true); return; }
+  follow(tid);
+});
+document.getElementById('melee-url').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('follow').click(); });
+document.getElementById('refresh').addEventListener('click', refreshLive);
+document.getElementById('unfollow').addEventListener('click', unfollow);
+document.getElementById('standings-filter').addEventListener('input', applyFilter);
+
 addFile(parseCSV(SAMPLE_CSV), true);
 afterLoad();
+{
+  // Pick up a tournament from the link (?t=457640) or the one followed last time.
+  const fromUrl = parseTournament(new URLSearchParams(location.search).get('t') || '');
+  const saved = fromUrl || store(true, 'bdst-live');
+  if (saved) follow(saved);
+}
 </script>
 </body>
 </html>
