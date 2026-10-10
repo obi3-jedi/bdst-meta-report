@@ -4,43 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Upload melee.gg Star Wars: Unlimited standings to see leader and base usage, aspects, top cut, round-by-round results and a shareable image.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c1020'/%3E%3Crect x='6' y='18' width='5' height='8' rx='1' fill='%2374a9ff'/%3E%3Crect x='13.5' y='11' width='5' height='15' rx='1' fill='%23f0b443'/%3E%3Crect x='21' y='6' width='5' height='20' rx='1' fill='%2374a9ff'/%3E%3C/svg%3E">
-<title>Unlimited Meta Report</title>
+<link rel="icon" type="image/png" href="bdst-icon.png">
+<meta property="og:image" content="bdst-logo.png">
+<title>BDST Meta Report</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: a scoreboard-style report — event header, stat strip, ranked leader and base boards, aspects, top cut, rounds, pairings. */
+/* Layout: BDST scoreboard — logo header, stat strip, ranked boards, aspects, top cut, rounds, pairings.
+   Brand: the logo's black plate, white lettering and red edge; a single dark look by choice. */
 :root {
-  --bg: #eef0f6;
-  --surface: #ffffff;
-  --ink: #141a2e;
-  --muted: #5a6280;
-  --line: #d9ddea;
-  --gold: #a8690f;
-  --holo: #2d63c4;
-  --holo-soft: rgba(45, 99, 196, .22);
-  --gold-soft: rgba(168, 105, 15, .12);
-  --scrim: rgba(12, 16, 32, .6);
-  --vig: #2f6fc4; --com: #2f8a48; --agg: #c63a32; --cun: #c99a1c; --her: #f4f1e6; --vil: #22232a; --pip-ring: rgba(20, 26, 46, .35);
+  --bg: #0a0a0b;
+  --surface: #151517;
+  --ink: #f7f7f7;
+  --muted: #a3a3ab;
+  --line: #2c2c31;
+  --gold: #ff1418;                       /* BDST red: top cut, highlights, actions */
+  --holo: #ffffff;
+  --holo-soft: rgba(255, 255, 255, .2);  /* rest of field */
+  --gold-soft: rgba(255, 20, 24, .16);
+  --scrim: rgba(0, 0, 0, .78);
+  --vig: #4f8fe0; --com: #3fae5e; --agg: #e8603f; --cun: #e6b93a; --her: #ece8da; --vil: #000000; --pip-ring: rgba(255, 255, 255, .5);
   --f-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-data: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0c1020; --surface: #141a31; --ink: #e7eaf5; --muted: #949cbb; --line: #252d4b;
-    --gold: #f0b443; --holo: #74a9ff; --holo-soft: rgba(116, 169, 255, .24); --gold-soft: rgba(240, 180, 67, .12);
-    --scrim: rgba(0, 0, 0, .7);
-    --vig: #5a9be8; --com: #4cb066; --agg: #e2574d; --cun: #e8bb3d; --her: #ece8da; --vil: #08090c; --pip-ring: rgba(231, 234, 245, .45);
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0c1020; --surface: #141a31; --ink: #e7eaf5; --muted: #949cbb; --line: #252d4b;
-  --gold: #f0b443; --holo: #74a9ff; --holo-soft: rgba(116, 169, 255, .24); --gold-soft: rgba(240, 180, 67, .12);
-  --scrim: rgba(0, 0, 0, .7);
-  --vig: #5a9be8; --com: #4cb066; --agg: #e2574d; --cun: #e8bb3d; --her: #ece8da; --vil: #08090c; --pip-ring: rgba(231, 234, 245, .45);
   color-scheme: dark;
 }
 
@@ -58,9 +45,17 @@ button { font-family: var(--f-body); }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
 
 /* Header + upload */
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand .logo { width: clamp(140px, 30vw, 200px); height: auto; display: block; }
+.brand .eyebrow { line-height: 1.5; border-left: 2px solid var(--gold); padding-left: 14px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.boards.single { grid-template-columns: minmax(0, 1fr); }
+.pair { display: flex; gap: 6px; align-items: center; flex: none; }
+.bthumb.gen { display: grid; place-items: center; font: italic 800 12px/1 var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: #fff; }
+.bthumb.gen.a-cunning, .bthumb.gen.a-heroism { color: #141414; }
 header { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: end; justify-content: space-between; }
 header .titles { display: grid; gap: 8px; min-width: 0; flex: 1 1 320px; }
-h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 700; line-height: .95; letter-spacing: .01em; text-transform: uppercase; }
+h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 800; font-style: italic; line-height: .95; letter-spacing: .01em; text-transform: uppercase; }
 h1 span { color: var(--gold); }
 .evname { font: 600 22px/1.2 var(--f-display); letter-spacing: .02em; color: var(--ink); background: transparent; border: 0; border-bottom: 1.5px dashed var(--line); padding: 2px 0; width: min(100%, 26rem); }
 .evname::placeholder { color: var(--muted); }
@@ -73,7 +68,7 @@ h1 span { color: var(--gold); }
 .drop strong { font-family: var(--f-display); font-size: 18px; letter-spacing: .03em; text-transform: uppercase; }
 .drop small { display: block; color: var(--muted); font-size: 13px; }
 .icon { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: var(--holo-soft); color: var(--holo); flex: none; }
-.btn { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--gold); color: var(--bg); font: 700 17px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--gold); color: #fff; font: italic 800 17px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
 .btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
 .btn:hover { filter: brightness(1.08); }
 .notice { font-size: 13px; color: var(--muted); }
@@ -112,11 +107,11 @@ h1 span { color: var(--gold); }
 
 /* Controls */
 .bar-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
-.bar-head h2 { font-size: 28px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+.bar-head h2 { font-size: 28px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: .02em; }
 .bar-head p { margin: 0; color: var(--muted); font-size: 14px; max-width: 60ch; }
 .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
 .seg button { font: 600 13px/1 var(--f-body); color: var(--muted); background: none; border: 0; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
 
@@ -214,7 +209,7 @@ td .sub { color: var(--muted); font-size: 12px; }
 .seat .art .pos { position: absolute; right: 10px; top: 8px; font: 700 26px/1 var(--f-display); color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, .6); }
 .seat .body { padding: 28px 14px 14px; display: grid; gap: 3px; min-width: 0; }
 .seat.first { border-color: var(--gold); }
-.seat.first .art .pos { color: #ffd77a; }
+.seat.first .art .pos { color: var(--gold); }
 .seat .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .seat .rec { font: 400 12px var(--f-data); color: var(--muted); }
 .seat .pl { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -236,7 +231,7 @@ td .sub { color: var(--muted); font-size: 12px; }
 <div class="wrap">
   <header>
     <div class="titles">
-      <div class="eyebrow">Star Wars: Unlimited · melee.gg standings</div>
+      <div class="brand"><img class="logo" src="bdst-logo.png" alt="BDST" width="720" height="284"><span class="eyebrow">Star Wars: Unlimited<br>Meta report</span></div>
       <h1>Leader <span>&amp;</span> Base<br>Breakdown</h1>
       <input class="evname" id="evname" type="text" placeholder="Name this event" aria-label="Event name" maxlength="60">
       <div class="notice" id="notice"></div>
@@ -263,13 +258,23 @@ td .sub { color: var(--muted); font-size: 12px; }
         <span><i style="background:var(--holo-soft)"></i>Rest of field</span>
         <span>Win % = match wins ÷ matches played</span>
       </div>
-      <div class="seg" role="group" aria-label="Sort boards">
+      <div class="controls">
+      <div class="seg" role="group" aria-label="View" id="viewseg">
+        <button type="button" id="view-split" aria-pressed="true">Leaders &amp; bases</button>
+        <button type="button" id="view-decks" aria-pressed="false">Decks</button>
+      </div>
+      <div class="seg" role="group" aria-label="Common bases" id="genseg">
+        <button type="button" id="gen-on" aria-pressed="true" title="Group interchangeable common bases by colour, e.g. Red Force">Commons by colour</button>
+        <button type="button" id="gen-off" aria-pressed="false">Bases by name</button>
+      </div>
+      <div class="seg" role="group" aria-label="Sort boards" id="sortseg">
         <button type="button" id="sort-count" aria-pressed="true">Most played</button>
         <button type="button" id="sort-wr" aria-pressed="false">Best win %</button>
         <button type="button" id="sort-cut" aria-pressed="false">Top cut</button>
       </div>
+      </div>
     </div>
-    <div class="boards">
+    <div class="boards" id="boards">
       <div class="board" id="leaders"></div>
       <div class="board" id="bases"></div>
     </div>
@@ -296,13 +301,17 @@ td .sub { color: var(--muted); font-size: 12px; }
     <div class="tbl-wrap"><table id="pairs"></table></div>
   </section>
 
-  <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted list are grouped as Unknown. Top cut is read from playoff status (Active or Eliminated); without a playoff phase the top 8 by rank are used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
+  <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted list are grouped as Unknown. Common bases are interchangeable within a colour, so by default they are grouped: “Red Force” is any Aggression Force base (28 HP), “Blue 30 HP” any plain Vigilance base, and “Splash” the 27 HP bases that ignore an aspect. Rare bases such as Data Vault keep their names. Top cut is read from playoff status (Active or Eliminated); without a playoff phase the top 8 by rank are used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
 </div>
 
 <div class="modal" id="modal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="hdr"><h3 id="modal-title">Share image</h3><button type="button" class="x" id="modal-close" aria-label="Close">×</button></div>
-    <img id="shot" alt="Infographic of the leader and base breakdown">
+    <div class="seg" role="group" aria-label="Image layout" id="imgseg">
+      <button type="button" id="img-split" aria-pressed="true">Leaders &amp; bases</button>
+      <button type="button" id="img-decks" aria-pressed="false">Decks</button>
+    </div>
+    <img id="shot" alt="BDST infographic of the tournament breakdown">
     <div class="actions">
       <button class="btn" id="copy" type="button">Copy image</button>
       <button class="btn ghost" id="dl" type="button" hidden>Download PNG</button>
@@ -317,7 +326,7 @@ td .sub { color: var(--muted); font-size: 12px; }
 const SAMPLE_CSV = "Rank,TeamPlayers1DisplayName,Decklists1DecklistName,MatchRecord,GameRecord,TeamStatusDescription,MatchingMethodDescription,RoundNumber,TournamentId\n1,Player 1,\"Yoda, Sensing Darkness - Strangled Cliffs\",7-0-2,15-5-3,Active,Playoffs/Top Cut,9,sample\n2,Player 2,\"Han Solo, Worth the Risk - Shadowed Undercity\",6-2-1,14-8-3,Eliminated,Playoffs/Top Cut,9,sample\n3,Player 3,\"Iden Versio, Inferno Squad Commander - Data Vault\",5-1-2,11-5-6,Eliminated,Playoffs/Top Cut,9,sample\n4,Player 4,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",5-1-2,11-2-6,Eliminated,Playoffs/Top Cut,9,sample\n5,Player 5,\"Yoda, Sensing Darkness - Fortress Vader\",4-2-1,10-7-0,Eliminated,Playoffs/Top Cut,9,sample\n6,Player 6,\"Han Solo, Worth the Risk - Shadowed Undercity\",4-2-1,10-7-3,Eliminated,Playoffs/Top Cut,9,sample\n7,Player 7,\"Boba Fett, Any Methods Necessary - Theed Palace\",4-2-1,9-6-3,Eliminated,Playoffs/Top Cut,9,sample\n8,Player 8,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-3-0,11-7-0,Eliminated,Playoffs/Top Cut,9,sample\n9,Player 9,\"Han Solo, Never Tell Me the Odds - Tarkintown\",4-2-0,9-6-0,Cut,Playoffs/Top Cut,9,sample\n10,Player 10,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",4-2-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n11,Player 11,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-2-0,8-5-0,Cut,Playoffs/Top Cut,9,sample\n12,Player 12,\"Emperor Palpatine, Galactic Ruler - Colossus\",3-2-1,7-6-0,Cut,Playoffs/Top Cut,9,sample\n13,Player 13,\"Admiral Piett, Commanding the Armada - Nadiri Dockyards\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n14,Player 14,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n15,Player 15,\"Luke Skywalker, Hero of Yavin - Data Vault\",3-3-0,7-7-0,Cut,Playoffs/Top Cut,9,sample\n16,Player 16,\"Darth Maul, Sith Revealed - Vergence Temple\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n17,Player 17,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n18,Player 18,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",2-2-0,5-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n19,Player 19,\"Anakin Skywalker, What it Takes to Win - Shadowed Undercity\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n20,Player 20,\"Quinlan Vos, Sticking the Landing - Tarkintown\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n21,Player 21,\"Captain Phasma, Chrome Dome - Energy Conversion Lab\",2-4-0,4-9-0,Cut,Playoffs/Top Cut,9,sample\n22,Player 22,\"Han Solo, Worth the Risk - Shadowed Undercity\",2-2-0,5-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n23,Player 23,\"Yoda, Sensing Darkness - Fortress Vader\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n24,Player 24,\"Boba Fett, Any Methods Necessary - Data Vault\",2-3-0,6-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n25,Player 25,\"Boba Fett, Any Methods Necessary - Data Vault\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n26,Player 26,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",2-4-0,7-8-0,Cut,Playoffs/Top Cut,9,sample\n27,Player 27,\"Captain Phasma, Chrome Dome - Data Vault\",1-1-1,3-4-0,Dropped (Staff),Playoffs/Top Cut,9,sample\n28,Player 28,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",1-1-1,2-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n29,Player 29,\"Avar Kriss, Marshal of Starlight - Nightsister Lair\",1-1-1,4-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n30,Player 30,\"Mace Windu, Vaapad Form Master - Shadowed Undercity\",1-2-0,2-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n31,Player 31,\"Quinlan Vos, Sticking the Landing - Tarkintown\",1-2-0,3-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n32,Player 32,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",1-3-0,4-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n33,Player 33,\"Rey, Nobody - Nightsister Lair\",1-3-0,2-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n34,Player 34,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",1-2-0,2-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n35,Player 35,\"Grand Admiral Thrawn, ...How Unfortunate - Data Vault\",0-3-0,3-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n36,Player 36,[[[Decklist]]],0-3-0,0-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n37,Player 37,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",0-3-0,0-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n";
 const CARDS = window.SWU_CARDS || { leaders: {}, bases: {} };
 const ASPECTS = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy'];
-const state = { rounds: new Map(), tid: null, sort: 'count', sample: false, label: '' };
+const state = { rounds: new Map(), tid: null, sort: 'count', view: 'split', gen: true, imgView: 'split', sample: false, label: '' };
 
 // ---------- card lookup ----------
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -353,6 +362,24 @@ function card(kind, name) {
   }
   cardCache.set(key, c);
   return c;
+}
+// Common bases with the same ability are interchangeable within a colour, so group them as e.g. "Red Force".
+const COLOR = { Vigilance: 'Blue', Command: 'Green', Aggression: 'Red', Cunning: 'Yellow' };
+const genericInfo = new Map();
+function baseKey(p) {
+  if (!state.gen) return p.base;
+  const c = card('bases', p.base), asp = c?.a?.[0];
+  if (!c?.g || !COLOR[asp]) return p.base;
+  const key = `${COLOR[asp]} ${c.g}`;
+  if (!genericInfo.has(key)) genericInfo.set(key, { aspect: asp, fam: c.g, names: new Set() });
+  genericInfo.get(key).names.add(p.base);
+  return key;
+}
+function baseLabel(key) {
+  const gi = genericInfo.get(key);
+  if (gi) return { pips: [gi.aspect], sub: [...gi.names].join(', ') };
+  const c = card('bases', key);
+  return { pips: c?.a || [], sub: c?.hp ? c.hp + ' HP' : '' };
 }
 const deckAspects = p => [...new Set([...(card('leaders', p.leader)?.a || []), ...(card('bases', p.base)?.a || [])])];
 
@@ -466,6 +493,8 @@ function leaderImg(name, cls = 'thumb') {
   return c && c.i ? `<img class="${cls}" src="${c.i}" alt="" loading="lazy">` : `<span class="${cls}" aria-hidden="true">${esc(initials(splitLeader(name).name))}</span>`;
 }
 function baseImg(name) {
+  const gi = genericInfo.get(name);
+  if (gi) return `<span class="bthumb gen a-${gi.aspect.toLowerCase()}" title="${esc([...gi.names].join(', '))}">${esc(gi.fam)}</span>`;
   const c = card('bases', name);
   return c && c.i ? `<img class="bthumb" src="${c.i}" alt="" loading="lazy">` : `<span class="bthumb" aria-hidden="true"></span>`;
 }
@@ -479,25 +508,40 @@ function bestChip(g) {
 function boardHTML(title, groups, total, kind) {
   const max = Math.max(...groups.map(g => g.count), 1);
   const rows = groups.map(g => {
-    const isL = kind === 'leader';
-    const c = card(isL ? 'leaders' : 'bases', g.key);
-    let label;
-    if (isL && g.key !== 'Unknown') {
-      const { name, sub } = splitLeader(g.key);
-      label = `<b>${esc(name)}</b>${pips(c?.a || [])}<em>${esc(sub)}</em>`;
-    } else label = `<b>${esc(g.key)}</b>${pips(c?.a || [])}${!isL && c?.hp ? `<em>${c.hp} HP</em>` : ''}`;
+    let label, art;
+    if (kind === 'leader') {
+      const c = card('leaders', g.key);
+      if (g.key !== 'Unknown') {
+        const { name, sub } = splitLeader(g.key);
+        label = `<b>${esc(name)}</b>${pips(c?.a || [])}<em>${esc(sub)}</em>`;
+      } else label = '<b>Unknown</b>';
+      art = leaderImg(g.key);
+    } else if (kind === 'base') {
+      const b = baseLabel(g.key);
+      label = `<b>${esc(g.key)}</b>${pips(b.pips)}<em>${esc(b.sub)}</em>`;
+      art = baseImg(g.key);
+    } else {
+      const [l, bk] = g.key.split('\u0000');
+      if (l === 'Unknown') { label = '<b>Unknown</b><em>No decklist</em>'; art = leaderImg(l); }
+      else {
+        label = `<b>${esc(splitLeader(l).name)}</b>${pips(deckAspects(g.players[0]))}<em>${esc(bk)}</em>`;
+        art = `<span class="pair">${leaderImg(l)}${baseImg(bk)}</span>`;
+      }
+    }
     const cutW = g.cut / max * 100, restW = (g.count - g.cut) / max * 100;
     const wrCls = g.mp < MIN_WR_GAMES ? 'na' : (g.wr >= .6 ? 'hi' : '');
-    const pilots = g.players.map(p => `<li><span class="num rk ${p.cut ? 'in' : ''}">${ord(p.rank)}</span><span>${esc(p.name)} <span class="muted">· ${esc(isL ? p.base : splitLeader(p.leader).name)}</span></span><span class="num muted">${p.m.w}-${p.m.l}-${p.m.d}</span></li>`).join('');
+    const other = p => kind === 'leader' ? p.base : kind === 'base' ? splitLeader(p.leader).name : p.base;
+    const pilots = g.players.map(p => `<li><span class="num rk ${p.cut ? 'in' : ''}">${ord(p.rank)}</span><span>${esc(p.name)} <span class="muted">· ${esc(other(p))}</span></span><span class="num muted">${p.m.w}-${p.m.l}-${p.m.d}</span></li>`).join('');
     return `<details class="row"><summary>
-      <div class="who">${isL ? leaderImg(g.key) : baseImg(g.key)}<div class="info"><div class="nm">${label}${bestChip(g)}</div>
+      <div class="who">${art}<div class="info"><div class="nm">${label}${bestChip(g)}</div>
         <div class="track" title="${g.cut} of ${g.count} made top cut">${g.cut ? `<div class="cut" style="width:${cutW}%"></div>` : ''}${g.count - g.cut ? `<div class="rest" style="width:${restW}%"></div>` : ''}</div></div></div>
       <div class="cnt"><b>${g.count}</b><small>${pct(g.count / total)}</small></div>
       <div class="wr ${wrCls}" title="${g.w}-${g.l}-${g.d} in matches">${g.mp ? pct(g.wr) : '–'}</div>
     </summary><ul class="pilots">${pilots}</ul></details>`;
   }).join('');
-  return `<h3>${title}<small>${groups.filter(g => g.key !== 'Unknown').length} different · tap a row for pilots</small></h3>
-    <div class="cols"><span>${kind === 'leader' ? 'Leader' : 'Base'}</span><span>Players</span><span>Win %</span></div>${rows}`;
+  const col = { leader: 'Leader', base: 'Base', deck: 'Leader + base' }[kind];
+  return `<h3>${title}<small>${groups.filter(g => !g.key.startsWith('Unknown')).length} different · tap a row for pilots</small></h3>
+    <div class="cols"><span>${col}</span><span>Players</span><span>Win %</span></div>${rows}`;
 }
 
 function renderAspects(ps) {
@@ -556,12 +600,14 @@ function renderRounds() {
 function render() {
   const ps = finalRound(), total = ps.length;
   if (!total) return;
+  genericInfo.clear();
   const leaders = group(ps, p => p.leader).sort(sorter(state.sort));
-  const bases = group(ps, p => p.base).sort(sorter(state.sort));
+  const bases = group(ps, baseKey).sort(sorter(state.sort));
+  const decks = group(ps, p => p.leader + '\u0000' + baseKey(p)).sort(sorter(state.sort));
   const known = ps.filter(p => p.known);
   const champ = ps[0];
   const topLeader = group(known, p => p.leader).sort(sorter('count'))[0];
-  const topBase = group(known, p => p.base).sort(sorter('count'))[0];
+  const topBase = group(known, baseKey).sort(sorter('count'))[0];
   const cutN = ps.filter(p => p.cut).length;
 
   document.getElementById('stats').innerHTML = `
@@ -570,8 +616,11 @@ function render() {
     <div class="stat"><span class="eyebrow">Most played base</span><span class="v sm">${topBase ? esc(topBase.key) : '–'}</span><span class="s">${topBase ? `${topBase.count} players · ${pct(topBase.count / total)} of field` : ''}</span></div>
     <div class="stat champ"><span class="eyebrow">${ps.playoff ? 'Champion' : 'First place'}</span><div class="hd">${leaderImg(champ.leader)}<div><span class="v sm">${esc(splitLeader(champ.leader).name)}</span><span class="s">${esc(champ.name)} · ${esc(champ.base)} · ${champ.m.w}-${champ.m.l}-${champ.m.d}</span></div></div></div>`;
 
-  document.getElementById('leaders').innerHTML = boardHTML('Leaders', leaders, total, 'leader');
-  document.getElementById('bases').innerHTML = boardHTML('Bases', bases, total, 'base');
+  const deckView = state.view === 'decks';
+  document.getElementById('boards').classList.toggle('single', deckView);
+  document.getElementById('bases').hidden = deckView;
+  document.getElementById('leaders').innerHTML = deckView ? boardHTML('Decks', decks, total, 'deck') : boardHTML('Leaders', leaders, total, 'leader');
+  if (!deckView) document.getElementById('bases').innerHTML = boardHTML('Bases', bases, total, 'base');
   renderAspects(ps);
 
   const cut = ps.filter(p => p.cut);
@@ -587,7 +636,7 @@ function render() {
 
   renderRounds();
 
-  const pairs = group(known, p => p.leader + '\u0000' + p.base).sort(sorter(state.sort));
+  const pairs = group(known, p => p.leader + '\u0000' + baseKey(p)).sort(sorter(state.sort));
   document.getElementById('pairs').innerHTML = `<thead><tr><th>Leader</th><th>Base</th><th>Players</th><th class="r">Match record</th><th class="r">Win %</th><th class="r">Best</th></tr></thead><tbody>` +
     pairs.map(g => {
       const [l, b] = g.key.split('\u0000'); const { name, sub } = splitLeader(l);
@@ -650,8 +699,8 @@ async function handleFiles(list) {
 }
 
 // ---------- share image ----------
-const C = { bg: '#0c1020', surface: '#141a31', ink: '#e7eaf5', muted: '#949cbb', line: '#252d4b', gold: '#f0b443', holo: 'rgba(116,169,255,.35)',
-  asp: { Vigilance: '#5a9be8', Command: '#4cb066', Aggression: '#e2574d', Cunning: '#e8bb3d', Heroism: '#ece8da', Villainy: '#08090c' } };
+const C = { bg: '#0a0a0b', surface: '#151517', ink: '#f7f7f7', muted: '#a3a3ab', line: '#2c2c31', gold: '#ff1418', holo: 'rgba(255,255,255,.3)',
+  asp: { Vigilance: '#4f8fe0', Command: '#3fae5e', Aggression: '#e8603f', Cunning: '#e6b93a', Heroism: '#ece8da', Villainy: '#000000' } };
 const imgCache = new Map();
 function loadImg(src) {
   if (!src) return Promise.resolve(null);
@@ -681,27 +730,49 @@ function pipsAt(ctx, as, x, y, r) {
   });
 }
 
+function bar(ctx, x, y, w, h, cutF, restF) {
+  const cw = cutF * w, rw = restF * w;
+  ctx.fillStyle = C.line; rr(x, y, w, h, 3, ctx); ctx.fill();
+  if (cw) { ctx.fillStyle = C.gold; rr(x, y, cw, h, 3, ctx); ctx.fill(); }
+  if (rw) { ctx.fillStyle = C.holo; rr(x + cw + (cw ? 2 : 0), y, Math.max(rw - (cw ? 2 : 0), 2), h, 3, ctx); ctx.fill(); }
+}
+async function drawBase(ctx, key, x, y, w, h) {
+  const gi = genericInfo.get(key);
+  if (!gi) return drawImgCover(ctx, card('bases', key)?.i, x, y, w, h, 8);
+  ctx.fillStyle = C.asp[gi.aspect]; rr(x, y, w, h, 8, ctx); ctx.fill();
+  ctx.fillStyle = gi.aspect === 'Cunning' ? '#141414' : '#ffffff';
+  ctx.font = `italic 800 ${Math.round(h * .4)}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+  ctx.textAlign = 'center'; ctx.fillText(gi.fam.toUpperCase(), x + w / 2, y + h / 2 + h * .14); ctx.textAlign = 'left';
+}
+
 async function makeImage() {
   const ps = finalRound(); if (!ps.length) return null;
-  await Promise.all(['700 80px "Barlow Condensed"', '600 30px "Barlow Condensed"', '500 24px Barlow', '600 24px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
+  await Promise.all(['700 80px "Barlow Condensed"', 'italic 800 80px "Barlow Condensed"', '600 30px "Barlow Condensed"', '500 24px Barlow', '600 24px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
   const W = 1080, H = 1350, P = 64;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   const D = '"Barlow Condensed", "Arial Narrow", sans-serif', B = 'Barlow, system-ui, sans-serif', M = '"JetBrains Mono", Menlo, monospace';
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W - 120, 80, 10, W - 120, 80, 600);
-  glow.addColorStop(0, 'rgba(116,169,255,.16)'); glow.addColorStop(1, 'rgba(116,169,255,0)');
+  const glow = ctx.createRadialGradient(W - 160, 60, 10, W - 160, 60, 640);
+  glow.addColorStop(0, 'rgba(255,20,24,.16)'); glow.addColorStop(1, 'rgba(255,20,24,0)');
   ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
 
   const known = ps.filter(p => p.known), total = ps.length;
   const ev = document.getElementById('evname').value.trim();
+  const deckMode = state.imgView === 'decks';
   ctx.textBaseline = 'alphabetic';
+  const logo = await loadImg('bdst-logo.png');
+  const LW = 220;
+  if (logo) ctx.drawImage(logo, W - P - LW, 46, LW, LW * logo.height / logo.width);
+  const tw = W - 2 * P - (logo ? LW + 24 : 0);
   ctx.fillStyle = C.gold; ctx.font = `600 22px ${B}`;
   ctx.fillText(`STAR WARS: UNLIMITED  ·  ${total} PLAYERS`, P, 96);
-  ctx.fillStyle = C.ink; ctx.font = `700 78px ${D}`;
-  ctx.fillText(fit(ctx, (ev || 'Leader & Base Breakdown').toUpperCase(), W - 2 * P), P, 172);
+  const title = (ev || (deckMode ? 'Deck Breakdown' : 'Leader & Base Breakdown')).toUpperCase();
+  let fs = 78; ctx.font = `italic 800 ${fs}px ${D}`;
+  while (fs > 50 && ctx.measureText(title).width > tw) { fs -= 2; ctx.font = `italic 800 ${fs}px ${D}`; }
+  ctx.fillStyle = C.ink; ctx.fillText(fit(ctx, title, tw), P, 172);
   ctx.fillStyle = C.muted; ctx.font = `500 26px ${B}`;
-  ctx.fillText(ev ? 'Leader & base breakdown' : 'From melee.gg standings', P, 214);
+  ctx.fillText(ev ? (deckMode ? 'Deck breakdown · leader + base' : 'Leader & base breakdown') : 'From melee.gg standings', P, 214);
 
   // Champion
   const ch = ps[0];
@@ -709,62 +780,77 @@ async function makeImage() {
   ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke();
   const chB = card('bases', ch.base);
   if (chB?.i) { ctx.save(); ctx.globalAlpha = .35; await drawImgCover(ctx, chB.i, W - P - 420, 246, 420, 168, 16); ctx.restore();
-    const fade = ctx.createLinearGradient(W - P - 420, 0, W - P - 200, 0); fade.addColorStop(0, C.surface); fade.addColorStop(1, 'rgba(20,26,49,0)');
+    const fade = ctx.createLinearGradient(W - P - 420, 0, W - P - 200, 0); fade.addColorStop(0, C.surface); fade.addColorStop(1, 'rgba(21,21,23,0)');
     ctx.fillStyle = fade; ctx.fillRect(W - P - 421, 248, 222, 164); }
   await drawImgCover(ctx, card('leaders', ch.leader)?.i, P + 16, 262, 136, 136, 12);
   const { name: cn, sub: cs } = splitLeader(ch.leader);
   ctx.fillStyle = C.gold; ctx.font = `600 22px ${B}`; ctx.fillText(ps.playoff ? 'CHAMPION' : 'FIRST PLACE', P + 176, 300);
-  ctx.fillStyle = C.ink; ctx.font = `700 50px ${D}`; ctx.fillText(fit(ctx, cn, 560), P + 176, 350);
+  ctx.fillStyle = C.ink; ctx.font = `italic 800 50px ${D}`; ctx.fillText(fit(ctx, cn, 560), P + 176, 350);
   const cnw = Math.min(ctx.measureText(cn).width, 560);
   pipsAt(ctx, deckAspects(ch), P + 176 + cnw + 16, 333, 9);
   ctx.fillStyle = C.muted; ctx.font = `500 24px ${B}`;
   ctx.fillText(fit(ctx, `${ch.name}  ·  ${ch.base}  ·  ${ch.m.w}-${ch.m.l}-${ch.m.d}`, 600), P + 176, 386);
 
-  // Leaders
-  const colL = P, colB = 600, y0 = 476;
-  ctx.fillStyle = C.ink; ctx.font = `700 32px ${D}`; ctx.fillText('LEADERS', colL, y0);
-  ctx.fillText('BASES', colB, y0);
-  ctx.fillStyle = C.muted; ctx.font = `500 18px ${B}`;
-  ctx.textAlign = 'right'; ctx.fillText('PLAYERS · WIN %', 560, y0); ctx.fillText('PLAYERS', W - P, y0); ctx.textAlign = 'left';
-  const L = group(known, p => p.leader).sort(sorter('count')).slice(0, 8);
-  const maxL = Math.max(...L.map(g => g.count), 1);
-  for (let i = 0; i < L.length; i++) {
-    const g = L[i], y = y0 + 22 + i * 62, { name } = splitLeader(g.key);
-    await drawImgCover(ctx, card('leaders', g.key)?.i, colL, y, 52, 52, 8);
-    ctx.fillStyle = C.ink; ctx.font = `600 27px ${D}`; ctx.fillText(fit(ctx, name, 250), colL + 66, y + 24);
-    const nw = Math.min(ctx.measureText(name).width, 250);
-    pipsAt(ctx, card('leaders', g.key)?.a || [], colL + 66 + nw + 10, y + 15, 7);
-    const bw = 300, cw = g.cut / maxL * bw, rw = (g.count - g.cut) / maxL * bw;
-    ctx.fillStyle = C.line; rr(colL + 66, y + 36, bw, 10, 3, ctx); ctx.fill();
-    ctx.fillStyle = C.gold; if (cw) { rr(colL + 66, y + 36, cw, 10, 3, ctx); ctx.fill(); }
-    ctx.fillStyle = C.holo; if (rw) { rr(colL + 66 + cw + (cw ? 2 : 0), y + 36, Math.max(rw - (cw ? 2 : 0), 2), 10, 3, ctx); ctx.fill(); }
-    ctx.textAlign = 'right';
-    ctx.fillStyle = C.ink; ctx.font = `600 26px ${M}`; ctx.fillText(String(g.count), 560, y + 26);
-    ctx.fillStyle = g.mp >= MIN_WR_GAMES && g.wr >= .6 ? C.gold : C.muted; ctx.font = `400 17px ${M}`; ctx.fillText(g.mp ? pct(g.wr) : '–', 560, y + 50);
-    ctx.textAlign = 'left';
-  }
-
-  // Bases
-  const Bs = group(known, p => p.base).sort(sorter('count')).slice(0, 6);
-  const maxB = Math.max(...Bs.map(g => g.count), 1);
-  for (let i = 0; i < Bs.length; i++) {
-    const g = Bs[i], y = y0 + 22 + i * 85;
-    await drawImgCover(ctx, card('bases', g.key)?.i, colB, y, 126, 50, 8);
-    ctx.fillStyle = C.ink; ctx.font = `600 25px ${D}`; ctx.fillText(fit(ctx, g.key, 210), colB + 140, y + 22);
-    const bw = 200, cw = g.cut / maxB * bw, rw = (g.count - g.cut) / maxB * bw;
-    ctx.fillStyle = C.line; rr(colB + 140, y + 34, bw, 10, 3, ctx); ctx.fill();
-    ctx.fillStyle = C.gold; if (cw) { rr(colB + 140, y + 34, cw, 10, 3, ctx); ctx.fill(); }
-    ctx.fillStyle = C.holo; if (rw) { rr(colB + 140 + cw + (cw ? 2 : 0), y + 34, Math.max(rw - (cw ? 2 : 0), 2), 10, 3, ctx); ctx.fill(); }
-    pipsAt(ctx, card('bases', g.key)?.a || [], colB + 140, y + 62, 6);
-    ctx.textAlign = 'right'; ctx.fillStyle = C.ink; ctx.font = `600 26px ${M}`; ctx.fillText(String(g.count), W - P, y + 26);
-    ctx.fillStyle = C.muted; ctx.font = `400 17px ${M}`; ctx.fillText(pct(g.count / total), W - P, y + 50); ctx.textAlign = 'left';
+  const y0 = 476;
+  genericInfo.clear();
+  if (deckMode) {
+    ctx.fillStyle = C.ink; ctx.font = `italic 800 32px ${D}`; ctx.fillText('TOP DECKS', P, y0);
+    ctx.fillStyle = C.muted; ctx.font = `500 18px ${B}`;
+    ctx.textAlign = 'right'; ctx.fillText('PLAYERS · WIN %', W - P, y0); ctx.textAlign = 'left';
+    const Dk = group(known, p => p.leader + '\u0000' + baseKey(p)).sort(sorter('count')).slice(0, 8);
+    const max = Math.max(...Dk.map(g => g.count), 1);
+    for (let i = 0; i < Dk.length; i++) {
+      const g = Dk[i], y = y0 + 22 + i * 62, [l, bk] = g.key.split('\u0000'), { name } = splitLeader(l);
+      await drawImgCover(ctx, card('leaders', l)?.i, P, y, 52, 52, 8);
+      await drawBase(ctx, bk, P + 60, y, 104, 52);
+      ctx.fillStyle = C.ink; ctx.font = `600 27px ${D}`; ctx.fillText(fit(ctx, name, 360), P + 180, y + 24);
+      const nw = Math.min(ctx.measureText(name).width, 360);
+      pipsAt(ctx, deckAspects(g.players[0]), P + 180 + nw + 10, y + 15, 7);
+      ctx.fillStyle = C.muted; ctx.font = `500 19px ${B}`; ctx.fillText(fit(ctx, bk, 400), P + 180, y + 48);
+      bar(ctx, 640, y + 20, 270, 12, g.cut / max, (g.count - g.cut) / max);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = C.ink; ctx.font = `600 26px ${M}`; ctx.fillText(String(g.count), W - P, y + 26);
+      ctx.fillStyle = g.mp >= MIN_WR_GAMES && g.wr >= .6 ? C.gold : C.muted; ctx.font = `400 17px ${M}`; ctx.fillText(g.mp ? pct(g.wr) : '–', W - P, y + 50);
+      ctx.textAlign = 'left';
+    }
+  } else {
+    const colL = P, colB = 600;
+    ctx.fillStyle = C.ink; ctx.font = `italic 800 32px ${D}`; ctx.fillText('LEADERS', colL, y0);
+    ctx.fillText('BASES', colB, y0);
+    ctx.fillStyle = C.muted; ctx.font = `500 18px ${B}`;
+    ctx.textAlign = 'right'; ctx.fillText('PLAYERS · WIN %', 560, y0); ctx.fillText('PLAYERS', W - P, y0); ctx.textAlign = 'left';
+    const L = group(known, p => p.leader).sort(sorter('count')).slice(0, 8);
+    const maxL = Math.max(...L.map(g => g.count), 1);
+    for (let i = 0; i < L.length; i++) {
+      const g = L[i], y = y0 + 22 + i * 62, { name } = splitLeader(g.key);
+      await drawImgCover(ctx, card('leaders', g.key)?.i, colL, y, 52, 52, 8);
+      ctx.fillStyle = C.ink; ctx.font = `600 27px ${D}`; ctx.fillText(fit(ctx, name, 250), colL + 66, y + 24);
+      const nw = Math.min(ctx.measureText(name).width, 250);
+      pipsAt(ctx, card('leaders', g.key)?.a || [], colL + 66 + nw + 10, y + 15, 7);
+      bar(ctx, colL + 66, y + 36, 300, 10, g.cut / maxL, (g.count - g.cut) / maxL);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = C.ink; ctx.font = `600 26px ${M}`; ctx.fillText(String(g.count), 560, y + 26);
+      ctx.fillStyle = g.mp >= MIN_WR_GAMES && g.wr >= .6 ? C.gold : C.muted; ctx.font = `400 17px ${M}`; ctx.fillText(g.mp ? pct(g.wr) : '–', 560, y + 50);
+      ctx.textAlign = 'left';
+    }
+    const Bs = group(known, baseKey).sort(sorter('count')).slice(0, 6);
+    const maxB = Math.max(...Bs.map(g => g.count), 1);
+    for (let i = 0; i < Bs.length; i++) {
+      const g = Bs[i], y = y0 + 22 + i * 85;
+      await drawBase(ctx, g.key, colB, y, 126, 50);
+      ctx.fillStyle = C.ink; ctx.font = `600 25px ${D}`; ctx.fillText(fit(ctx, g.key, 210), colB + 140, y + 22);
+      bar(ctx, colB + 140, y + 34, 200, 10, g.cut / maxB, (g.count - g.cut) / maxB);
+      pipsAt(ctx, baseLabel(g.key).pips, colB + 140, y + 62, 6);
+      ctx.textAlign = 'right'; ctx.fillStyle = C.ink; ctx.font = `600 26px ${M}`; ctx.fillText(String(g.count), W - P, y + 26);
+      ctx.fillStyle = C.muted; ctx.font = `400 17px ${M}`; ctx.fillText(pct(g.count / total), W - P, y + 50); ctx.textAlign = 'left';
+    }
   }
 
   // Top cut
   const cut = ps.filter(p => p.cut).slice(0, 8);
   let y = 1040;
   if (cut.length) {
-    ctx.fillStyle = C.ink; ctx.font = `700 32px ${D}`; ctx.fillText(`TOP ${cut.length}`, P, y);
+    ctx.fillStyle = C.ink; ctx.font = `italic 800 32px ${D}`; ctx.fillText(`TOP ${cut.length}`, P, y);
     const n = 8, gap = 14, w = (W - 2 * P - gap * (n - 1)) / n;
     for (let i = 0; i < cut.length; i++) {
       const p = cut[i], x = P + i * (w + gap);
@@ -794,18 +880,24 @@ async function makeImage() {
   }
 
   ctx.fillStyle = C.muted; ctx.font = `500 16px ${B}`;
-  ctx.fillText('Data: melee.gg standings · Card art © Lucasfilm Ltd. & FFG via swu-db.com', P, H - 26);
+  ctx.fillText('BDST · Data: melee.gg standings · Card art © Lucasfilm Ltd. & FFG via swu-db.com', P, H - 26);
   return cv;
 }
 
 let lastBlob = null, downloads = null;
+async function refreshShot() {
+  const cv = await makeImage(); if (!cv) return false;
+  lastBlob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  document.getElementById('shot').src = cv.toDataURL('image/png');
+  return true;
+}
 // Inside the claude.ai viewer, files are saved through the downloads capability; opened directly, a plain link works.
 window.claude?.use?.('downloads').then(d => { downloads = d; }).catch(() => {});
 async function openShare() {
   const modal = document.getElementById('modal'), img = document.getElementById('shot'), msg = document.getElementById('share-msg');
-  const cv = await makeImage(); if (!cv) return;
-  lastBlob = await new Promise(r => cv.toBlob(r, 'image/png'));
-  img.src = cv.toDataURL('image/png');
+  state.imgView = state.view;
+  setPressed('imgseg', 'img-' + state.imgView);
+  if (!(await refreshShot())) return;
   let topLevel = false; try { topLevel = window.top === window.self; } catch (e) {}
   document.getElementById('dl').hidden = !(topLevel || downloads);
   msg.textContent = '1080 × 1350, sized for Instagram and Discord. Right-click the image (or press and hold on a phone) to save it.';
@@ -824,10 +916,19 @@ document.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataT
 for (const [id, mode] of [['sort-count', 'count'], ['sort-wr', 'wr'], ['sort-cut', 'cut']]) {
   document.getElementById(id).addEventListener('click', () => {
     state.sort = mode;
-    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.id === id));
+    setPressed('sortseg', id);
     render();
   });
 }
+function setPressed(groupId, id) {
+  document.querySelectorAll(`#${groupId} button`).forEach(b => b.setAttribute('aria-pressed', b.id === id));
+}
+for (const [id, v] of [['view-split', 'split'], ['view-decks', 'decks']])
+  document.getElementById(id).addEventListener('click', () => { state.view = v; setPressed('viewseg', id); render(); });
+for (const [id, v] of [['gen-on', true], ['gen-off', false]])
+  document.getElementById(id).addEventListener('click', () => { state.gen = v; setPressed('genseg', id); render(); });
+for (const [id, v] of [['img-split', 'split'], ['img-decks', 'decks']])
+  document.getElementById(id).addEventListener('click', () => { state.imgView = v; setPressed('imgseg', id); refreshShot(); });
 document.getElementById('evname').addEventListener('input', e => { if (!state.sample && state.tid) store(false, 'swu-ev-' + state.tid, e.target.value); });
 document.getElementById('share').addEventListener('click', openShare);
 document.getElementById('modal-close').addEventListener('click', () => { document.getElementById('modal').hidden = true; });

@@ -37,6 +37,23 @@ def thumb(url, kind, tmp):
         return "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
 
 
+def generic_family(x):
+    """Common bases are interchangeable within a colour, so the site can group them.
+
+    Returns the family name ("30 HP", "Force", "Splash") or None for named rare/special bases.
+    """
+    if x.get("Rarity") != "Common":
+        return None
+    text = x.get("FrontText") or ""
+    if not text:
+        return f"{x.get('HP')} HP"
+    if "The Force is with you" in text:
+        return "Force"
+    if "ignoring 1 of its" in text:
+        return "Splash"
+    return None
+
+
 def build(kind, tmp):
     entries = {}
     for x in get_json(API.format(kind)):
@@ -49,6 +66,9 @@ def build(kind, tmp):
         e = {"n": name, "a": x.get("Aspects") or [], "i": ""}
         if kind == "base":
             e["hp"] = x.get("HP")
+            fam = generic_family(x)
+            if fam:
+                e["g"] = fam
         try:
             if x.get("FrontArt"):
                 e["i"] = thumb(x["FrontArt"], kind, tmp)
