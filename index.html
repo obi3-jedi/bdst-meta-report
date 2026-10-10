@@ -267,9 +267,10 @@ table.st tr.dropped td { opacity: .5; }
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="hdr"><h3 id="modal-title">Share image</h3><button type="button" class="x" id="modal-close" aria-label="Close">×</button></div>
     <div class="actions">
-      <div class="seg" role="group" aria-label="Image" id="kindseg" hidden>
+      <div class="seg" role="group" aria-label="Image" id="kindseg">
         <button type="button" id="kind-decks" aria-pressed="true">Deck breakdown</button>
-        <button type="button" id="kind-bracket" aria-pressed="false">Top 8 bracket</button>
+        <button type="button" id="kind-top8" aria-pressed="false">Current top 8</button>
+        <button type="button" id="kind-bracket" aria-pressed="false" hidden>Top 8 bracket</button>
       </div>
       <div class="seg" role="group" aria-label="Size" id="fmtseg">
         <button type="button" id="fmt-wide" aria-pressed="true">16:9</button>
@@ -400,6 +401,7 @@ function buildRound(objs) {
     rank: parseInt(o.Rank, 10) || 9999,
     id: pick(o, 'TeamPlayers1ID', 'TeamId', 'TeamPlayers1DisplayName'),
     name: pick(o, 'TeamPlayers1DisplayName', 'TeamPlayers1Username', 'TeamName') || 'Player',
+    record: o.MatchRecord || '', points: o.Points !== undefined && o.Points !== '' ? Number(o.Points) : null, status: o.TeamStatusDescription || '',
     ...parseDeck(o.Decklists1DecklistName)
   })).sort((a, b) => a.rank - b.rank);
   // A player listed twice in one round is counted once.
@@ -672,7 +674,7 @@ function entrantDeck(e) {
 function renderBracket() {
   const sec = document.getElementById('bracket-sec'), br = state.live?.bracket;
   sec.hidden = !br;
-  document.getElementById('kindseg').hidden = !br;
+  document.getElementById('kind-bracket').hidden = !br;
   if (!br) return;
   document.getElementById('bracket-title').innerHTML = `Top ${br.size}${br.note ? `<small style="margin-left:10px">${esc(br.note)}</small>` : ''}`;
   const row = (e, m) => {
@@ -1020,6 +1022,107 @@ async function drawBackground(ctx, W, H, groups, art) {
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#b3070d'; ctx.fillRect(art.x, art.y, art.w, art.h); ctx.restore();
 }
 
+// ---------- current top 8 (after the latest completed round) ----------
+// The eight highest-ranked players still in the event, each on a card with their deck.
+function currentTop8() {
+  const ps = currentPlayers().filter(p => p.rank && p.rank < 9999 && !/drop/i.test(p.status || '')).sort((a, b) => a.rank - b.rank).slice(0, 8);
+  const round = state.live?.round || (() => { const k = Math.max(...state.rounds.keys()); return k > 0 ? `Round ${k}` : ''; })();
+  return { ps, round };
+}
+
+async function drawPlayerCard(ctx, p, deck, x, y, w, h) {
+  const { D, B, M } = FONTS;
+  ctx.save(); rr(ctx, x, y, w, h, 12); ctx.clip();
+  ctx.fillStyle = 'rgba(12,3,5,.94)'; ctx.fillRect(x, y, w, h);
+  const wide = w / h > 1.45;
+  // Art: leader on top (or left), base strip underneath
+  const ax = x, ay = y, aw = wide ? h : w, ah = wide ? h : h - 128, strip = wide ? 12 : 16;
+  const im = deck ? await leaderArt(deck.leader) : null;
+  ctx.save(); ctx.beginPath(); ctx.rect(ax, ay, aw, ah - strip); ctx.clip();
+  if (im) drawCover(ctx, im, ax, ay, aw, ah - strip, .22); else { ctx.fillStyle = '#3a0d10'; ctx.fillRect(ax, ay, aw, ah - strip); }
+  ctx.restore();
+  const gi = deck ? genericInfo.get(deck.base) : null;
+  if (gi) { ctx.fillStyle = C.asp[gi.aspect]; ctx.fillRect(ax, ay + ah - strip, aw, strip); }
+  else {
+    const bi = deck ? await baseArt(deck.base) : null;
+    ctx.save(); ctx.beginPath(); ctx.rect(ax, ay + ah - strip, aw, strip); ctx.clip();
+    if (bi) drawCover(ctx, bi, ax, ay + ah - strip, aw, strip, .5); else { ctx.fillStyle = '#2a0a0c'; ctx.fillRect(ax, ay + ah - strip, aw, strip); }
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.strokeStyle = p.rank === 1 ? C.red : 'rgba(255,255,255,.22)'; ctx.lineWidth = p.rank === 1 ? 4 : 2; rr(ctx, x, y, w, h, 12); ctx.stroke();
+
+  // Rank badge
+  const rs = wide ? 24 : 28; ctx.font = `700 ${rs}px ${M}`;
+  const label = String(p.rank), bw = Math.max(rs * 1.9, ctx.measureText(label).width + 26), bh = rs * 1.75;
+  ctx.fillStyle = C.red; rr(ctx, x + 12, y + 12, bw, bh, bh / 2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x + 12 + bw / 2, y + 12 + bh / 2 + 1);
+  ctx.textBaseline = 'alphabetic';
+
+  // Text: name, record, deck
+  const tx = wide ? x + aw + 22 : x + 18, tw = wide ? w - aw - 40 : w - 36;
+  const top = wide ? y + h / 2 - 34 : y + ah + 38;
+  const name = p.name.toUpperCase();
+  let fs = wide ? 34 : 36; ctx.font = `italic 800 ${fs}px ${D}`;
+  while (fs > 20 && ctx.measureText(name).width > tw) { fs--; ctx.font = `italic 800 ${fs}px ${D}`; }
+  ctx.textAlign = 'left'; ctx.fillStyle = C.white; ctx.fillText(fit(ctx, name, tw), tx, top);
+  ctx.font = `700 ${wide ? 20 : 22}px ${M}`; ctx.fillStyle = C.red;
+  const rec = `${p.record || ''}${p.points != null ? `  ·  ${p.points} PTS` : ''}`;
+  ctx.fillText(rec, tx, top + (wide ? 32 : 36));
+  ctx.font = `600 ${wide ? 19 : 21}px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText(fit(ctx, deck ? deck.label : 'No decklist', tw), tx, top + (wide ? 62 : 70));
+}
+
+async function makeTop8Image() {
+  const { ps, round } = currentTop8(); if (!ps.length) return null;
+  const { D, B } = FONTS, tall = state.format === 'tall';
+  const W = tall ? 1080 : 1920, H = tall ? 1350 : 1080;
+  await Promise.all(['italic 800 80px "Barlow Condensed"', '700 40px "Barlow Condensed"', '600 22px Barlow', '700 22px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  // Decks, labelled like the deck breakdown
+  const groups = deckGroups(ps.filter(p => p.known));
+  const deckOf = new Map();
+  for (const g of groups) for (const p of g.players) deckOf.set(p.id, g);
+
+  ctx.fillStyle = '#100506'; ctx.fillRect(0, 0, W, H);
+  const lead = deckOf.get(ps[0].id);
+  const bg = lead ? await leaderArt(lead.leader) : null;
+  if (bg) { ctx.save(); ctx.globalAlpha = .9; ctx.drawImage(blurred(bg, W, H), 0, 0, W, H); ctx.restore(); }
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#b3070d'; ctx.fillRect(0, 0, W, H); ctx.restore();
+  ctx.fillStyle = 'rgba(16,4,6,.78)'; ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = 'alphabetic';
+
+  const logo = await loadImg('bdst-logo.png');
+  const ev = document.getElementById('evname').value.trim();
+  drawTitleBox(ctx, tall ? { X0: 40, X1: W - 40, Y: 40, H: 136, LW: 190, big: 62, small: 19 } : { X0: 40, X1: W - 40, Y: 40, H: 140, LW: 220, big: 72, small: 21 },
+    logo, (ev || 'Top 8').toUpperCase(), `STAR WARS: UNLIMITED  ·  TOP 8${round ? ' AFTER ' + round.toUpperCase() : ''}`);
+
+  // Card grid: 4 × 2 wide, 2 × 4 tall
+  const cols = tall ? 2 : 4, rows = Math.ceil(8 / cols), gap = 22;
+  const gx0 = 40, gy0 = tall ? 200 : 206, gx1 = W - 40, gy1 = H - 96;
+  const cw = (gx1 - gx0 - gap * (cols - 1)) / cols, ch = (gy1 - gy0 - gap * (rows - 1)) / rows;
+  for (let i = 0; i < ps.length; i++) {
+    // Tall layout reads down each column: 1-4 on the left, 5-8 on the right
+    const c = tall ? Math.floor(i / rows) : i % cols, r = tall ? i % rows : Math.floor(i / cols);
+    await drawPlayerCard(ctx, ps[i], deckOf.get(ps[i].id), gx0 + c * (cw + gap), gy0 + r * (ch + gap), cw, ch);
+  }
+
+  // Which decks make up the top 8
+  const summary = groups.map(g => `${g.label.toUpperCase()}${g.count > 1 ? ` ×${g.count}` : ''}`).join('   ·   ');
+  ctx.textAlign = 'left'; ctx.font = `italic 800 ${tall ? 20 : 22}px ${D}`; ctx.fillStyle = C.red;
+  const lbl = 'DECKS IN THE TOP 8:  ';
+  ctx.fillText(lbl, 40, H - 52);
+  const lw = ctx.measureText(lbl).width;
+  ctx.font = `700 ${tall ? 18 : 21}px ${D}`; ctx.fillStyle = C.white;
+  ctx.fillText(fit(ctx, summary, W - 80 - lw), 40 + lw, H - 52);
+  ctx.textAlign = 'right'; ctx.font = `500 14px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText('Data: melee.gg  ·  Card art © Lucasfilm Ltd. & FFG via swu-db.com', W - 40, H - 18);
+  ctx.textAlign = 'left';
+  return cv;
+}
+
 // Top 8 bracket image (1920 × 1080): quarterfinals on the left, final and champion on the right.
 async function makeBracketImage() {
   const br = state.live?.bracket; if (!br) return null;
@@ -1133,6 +1236,7 @@ async function makeBracketImage() {
 
 async function makeImage() {
   if (state.kind === 'bracket') return makeBracketImage();
+  if (state.kind === 'top8') return makeTop8Image();
   const ps = currentPlayers(); if (!ps.length) return null;
   await Promise.all(['italic 800 80px "Barlow Condensed"', '700 40px "Barlow Condensed"', '600 22px Barlow', '700 22px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
   const known = ps.filter(p => p.known), total = ps.length, n = known.length || 1;
@@ -1278,7 +1382,7 @@ window.claude?.use?.('downloads').then(d => { downloads = d; }).catch(() => {});
 function shareHint() {
   const bracket = state.kind === 'bracket';
   document.getElementById('fmtseg').hidden = bracket;
-  document.getElementById('chartseg').hidden = bracket;
+  document.getElementById('chartseg').hidden = bracket || state.kind === 'top8';
   if (bracket) { document.getElementById('share-msg').textContent = '1920 × 1080 (16:9). Right-click the image (or press and hold on a phone) to save it.'; return; }
   document.getElementById('share-msg').textContent = (state.format === 'tall'
     ? '1080 × 1350 (4:5), sized for Facebook and Instagram feeds.'
@@ -1313,9 +1417,9 @@ function setPressed(groupId, id) {
 for (const [id, v] of [['gen-on', true], ['gen-off', false]])
   document.getElementById(id).addEventListener('click', () => { state.gen = v; setPressed('genseg', id); render(); });
 document.getElementById('evname').addEventListener('input', e => { if (!state.sample && state.tid) store(false, 'swu-ev-' + state.tid, e.target.value); });
-document.getElementById('share').addEventListener('click', () => { if (!state.live?.bracket) state.kind = 'decks'; setPressed('kindseg', 'kind-' + state.kind); openShare(); });
+document.getElementById('share').addEventListener('click', () => { if (state.kind === 'bracket' && !state.live?.bracket) state.kind = 'decks'; setPressed('kindseg', 'kind-' + state.kind); openShare(); });
 document.getElementById('bracket-image').addEventListener('click', () => { state.kind = 'bracket'; setPressed('kindseg', 'kind-bracket'); openShare(); });
-for (const [id, v] of [['kind-decks', 'decks'], ['kind-bracket', 'bracket']])
+for (const [id, v] of [['kind-decks', 'decks'], ['kind-top8', 'top8'], ['kind-bracket', 'bracket']])
   document.getElementById(id).addEventListener('click', () => { state.kind = v; setPressed('kindseg', id); shareHint(); refreshShot(); });
 for (const [id, v] of [['chart-treemap', 'treemap'], ['chart-ring', 'ring']])
   document.getElementById(id).addEventListener('click', () => { state.chart = v; setPressed('chartseg', id); refreshShot(); });

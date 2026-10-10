@@ -12,7 +12,7 @@ Everything runs in the browser. Uploaded files never leave your computer.
 
 Paste a melee.gg tournament link into **Follow live** and press **Follow**, then press **Refresh** after each round. Upload the tournament's standings CSV once: melee.gg hides decklists publicly during an event, so decks come from the CSV and are matched to live standings by player ID. The site remembers the decklists and the followed tournament in your browser. A link like `?t=457640` opens straight into a tournament.
 
-While following, a **Top 8** bracket shows on the page: projected from the current Swiss standings (1v8, 4v5, 2v7, 3v6), then filled in with real pairings, scores and the champion as the cut is played. **Make bracket image** turns it into a 1920×1080 graphic.
+While following, a **Top 8** bracket shows on the page: projected from the current Swiss standings (1v8, 4v5, 2v7, 3v6), then filled in with real pairings, scores and the champion as the cut is played. **Make bracket image** turns it into a 1920×1080 graphic. The **Current top 8** image shows the eight highest-ranked players still in the event after the latest completed round, with record, points and deck, in 16:9 or 4:5.
 
 melee.gg doesn't let other websites read its data from the browser, so live standings come through a small Cloudflare Worker in `worker/` (https://bdst-melee-relay.bdst.workers.dev). It only answers `/tournament/<id>`, `/standings/<roundId>` and `/matches/<roundId>`, and only for this site. To redeploy it after a change:
 
