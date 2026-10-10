@@ -124,12 +124,23 @@ details.row summary:focus-visible { outline: 2px solid var(--focus); outline-off
 .pilots .muted { color: var(--muted); }
 .foot { font-size: 12px; color: var(--muted); max-width: 75ch; margin: 0; }
 
+/* Collapsible sections */
+.sec { display: grid; gap: 12px; min-width: 0; }
+.sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sec-toggle { display: inline-flex; align-items: center; gap: 10px; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 2px 0; text-align: left; min-width: 0; flex-wrap: wrap; }
+.sec-toggle .sec-title { font: italic 800 26px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; }
+.sec-toggle .sec-meta { font: 500 13px var(--f-body); color: var(--muted); }
+.sec-toggle .chev { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); color: var(--muted); transition: transform .18s ease; flex: none; }
+.sec-toggle:hover .chev { color: var(--ink); border-color: var(--muted); }
+.sec-toggle[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.sec-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 6px; }
+@media (prefers-reduced-motion: reduce) { .sec-toggle .chev { transition: none; } }
+
 /* Live tournament */
-.live { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; }
+.live-box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; }
 .live-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.live-bar label { font: italic 800 18px/1 var(--f-display); text-transform: uppercase; letter-spacing: .03em; display: flex; align-items: center; gap: 8px; }
-.live-bar label .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
-.live.on .live-bar label .dot { background: var(--red); box-shadow: 0 0 0 4px rgba(255, 20, 24, .2); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.live.on .dot { background: var(--red); box-shadow: 0 0 0 4px rgba(255, 20, 24, .2); }
 .live-bar input { flex: 1 1 260px; min-width: 0; font: 15px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; }
 .live-bar input::placeholder { color: var(--muted); }
 .live-bar .btn { padding: 9px 14px; font-size: 16px; }
@@ -213,47 +224,57 @@ table.st tr.dropped td { opacity: .5; }
     </div>
   </header>
 
-  <section class="live" id="live">
-    <div class="live-bar">
-      <label for="melee-url"><span class="dot" aria-hidden="true"></span>Follow live</label>
-      <input id="melee-url" type="url" inputmode="url" placeholder="Paste a melee.gg tournament link" autocomplete="off">
-      <button class="btn ghost" id="follow" type="button">Follow</button>
-      <button class="btn" id="refresh" type="button" hidden>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
-        Refresh
-      </button>
-      <button class="linkbtn" id="unfollow" type="button" hidden>Stop following</button>
-    </div>
-    <div class="live-status" id="live-status">Paste the tournament link, then press Refresh after each round. Upload the tournament’s standings CSV once so players can be matched to their decklists.</div>
-  </section>
-
-  <section class="stats" id="stats"></section>
-
-  <section>
-    <div class="bar-head">
-      <p class="hint">Common bases go by colour: “Yoda Red” is Yoda on any plain 30 HP Aggression base, “Yoda Red Force” on any Aggression Force base. Named bases like Data Vault keep their names.</p>
-      <div class="seg" role="group" aria-label="Common bases" id="genseg">
-        <button type="button" id="gen-on" aria-pressed="true">Commons by colour</button>
-        <button type="button" id="gen-off" aria-pressed="false">Bases by name</button>
+  <section class="sec live" id="live" data-sec="live">
+    <div class="sec-head"><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="live-body"><span class="chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="dot" aria-hidden="true"></span><span class="sec-title">Follow live</span><small class="sec-meta" id="live-meta"></small></button></div>
+    <div class="sec-body live-box" id="live-body">
+      <div class="live-bar">
+        <input id="melee-url" type="url" inputmode="url" placeholder="Paste a melee.gg tournament link" autocomplete="off" aria-label="melee.gg tournament link">
+        <button class="btn ghost" id="follow" type="button">Follow</button>
+        <button class="btn" id="refresh" type="button" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+          Refresh
+        </button>
+        <button class="linkbtn" id="unfollow" type="button" hidden>Stop following</button>
       </div>
+      <div class="live-status" id="live-status">Paste the tournament link, then press Refresh after each round. Upload the tournament’s standings CSV once so players can be matched to their decklists.</div>
     </div>
-    <div class="board" id="decks"></div>
   </section>
 
-  <section id="standings-sec" hidden>
-    <div class="board">
+  <section class="sec" data-sec="overview">
+    <div class="sec-head"><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="stats"><span class="chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="sec-title">Overview</span><small class="sec-meta" id="overview-meta"></small></button></div>
+    <div class="sec-body stats" id="stats"></div>
+  </section>
+
+  <section class="sec" data-sec="decks">
+    <div class="sec-head"><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="decks-body"><span class="chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="sec-title">Decks</span><small class="sec-meta" id="decks-meta"></small></button></div>
+    <div class="sec-body" id="decks-body">
       <div class="bar-head">
-        <h3 id="standings-title">Standings</h3>
+        <p class="hint">Common bases go by colour: “Yoda Red” is Yoda on any plain 30 HP Aggression base, “Yoda Red Force” on any Aggression Force base. Named bases like Data Vault keep their names.</p>
+        <div class="seg" role="group" aria-label="Common bases" id="genseg">
+          <button type="button" id="gen-on" aria-pressed="true">Commons by colour</button>
+          <button type="button" id="gen-off" aria-pressed="false">Bases by name</button>
+        </div>
+      </div>
+      <div class="board" id="decks"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="standings-sec" data-sec="standings" hidden>
+    <div class="sec-head"><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="standings-body"><span class="chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="sec-title">Standings</span><small class="sec-meta" id="standings-meta"></small></button></div>
+    <div class="sec-body board" id="standings-body">
+      <div class="bar-head">
+        <span></span>
         <input class="filter" id="standings-filter" type="search" placeholder="Find a player or deck" aria-label="Find a player or deck">
       </div>
       <div class="tbl-wrap"><table class="st" id="standings"></table></div>
     </div>
   </section>
 
-  <section id="bracket-sec" hidden>
-    <div class="board">
+  <section class="sec" id="bracket-sec" data-sec="bracket" hidden>
+    <div class="sec-head"><button class="sec-toggle" type="button" aria-expanded="true" aria-controls="bracket-body"><span class="chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="sec-title">Top 8</span><small class="sec-meta" id="bracket-meta"></small></button></div>
+    <div class="sec-body board" id="bracket-body">
       <div class="bar-head">
-        <h3 id="bracket-title">Top 8</h3>
+        <span></span>
         <button class="btn ghost" id="bracket-image" type="button">Make bracket image</button>
       </div>
       <div class="bracket" id="bracket"></div>
@@ -514,8 +535,8 @@ function render() {
       <div class="num share">${pct(g.count / n)}</div>
     </summary><ul class="pilots">${pilots}</ul></details>`;
   }).join('');
-  document.getElementById('decks').innerHTML = `<h3>Decks<small>${decks.length} different · tap a row to see who played it</small></h3>
-    <div class="cols"><span>#</span><span>Leader + base</span><span>Players</span><span>Share</span></div>${rows}`;
+  document.getElementById('decks-meta').textContent = `${decks.length} different · tap a row to see who played it`;
+  document.getElementById('decks').innerHTML = `<div class="cols"><span>#</span><span>Leader + base</span><span>Players</span><span>Share</span></div>${rows}`;
   renderStandings(ps, decks);
   renderBracket();
 }
@@ -526,7 +547,7 @@ function renderStandings(ps, decks) {
   if (sec.hidden) return;
   const labelOf = new Map();
   for (const g of decks) for (const p of g.players) labelOf.set(p.id, g);
-  document.getElementById('standings-title').innerHTML = `Standings<small style="margin-left:10px">after ${esc(state.live.round)}</small>`;
+  document.getElementById('standings-meta').textContent = `after ${state.live.round}`;
   const rows = ps.map(p => {
     const g = labelOf.get(p.id);
     const dropped = /drop/i.test(p.status);
@@ -681,7 +702,8 @@ function renderBracket() {
   sec.hidden = !br;
   document.getElementById('kind-bracket').hidden = !br;
   if (!br) return;
-  document.getElementById('bracket-title').innerHTML = `Top ${br.size}${br.note ? `<small style="margin-left:10px">${esc(br.note)}</small>` : ''}`;
+  document.querySelector('#bracket-sec .sec-title').textContent = `Top ${br.size}`;
+  document.getElementById('bracket-meta').textContent = br.note;
   const row = (e, m) => {
     if (!e) return `<div class="mrow tbd"><span class="seed"></span><span class="thumb" aria-hidden="true"></span><div class="who2"><b>To be decided</b></div><span class="score"></span></div>`;
     const d = entrantDeck(e);
@@ -1459,6 +1481,23 @@ document.getElementById('dl').addEventListener('click', async () => {
   a.download = name;
   a.click();
 });
+
+// Collapsible sections, remembered in this browser
+{
+  let collapsed;
+  try { collapsed = new Set(JSON.parse(store(true, 'bdst-collapsed') || '[]')); } catch (e) { collapsed = new Set(); }
+  document.querySelectorAll('.sec-toggle').forEach(btn => {
+    const sec = btn.closest('.sec'), key = sec.dataset.sec, body = sec.querySelector('.sec-body');
+    const set = open => { btn.setAttribute('aria-expanded', String(open)); body.hidden = !open; };
+    set(!collapsed.has(key));
+    btn.addEventListener('click', () => {
+      const open = btn.getAttribute('aria-expanded') !== 'true';
+      set(open);
+      if (open) collapsed.delete(key); else collapsed.add(key);
+      store(false, 'bdst-collapsed', JSON.stringify([...collapsed]));
+    });
+  });
+}
 
 document.getElementById('follow').addEventListener('click', () => {
   const tid = parseTournament(document.getElementById('melee-url').value);
