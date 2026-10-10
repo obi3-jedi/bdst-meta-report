@@ -441,8 +441,13 @@ function deckIndex() {
 // The players everything is drawn from: live standings matched to decklists when following a tournament, otherwise the uploaded file.
 function currentPlayers() {
   if (!state.live?.players?.length) return finalRound();
+  return withDecks(state.live.players);
+}
+
+// Live standings rows joined to decklists from the uploaded CSV.
+function withDecks(livePlayers) {
   const idx = deckIndex();
-  return state.live.players.map(lp => {
+  return livePlayers.map(lp => {
     const d = idx && (idx.byId.get(String(lp.playerId)) || idx.byName.get(lp.name.toLowerCase()) || idx.byName.get(lp.username.toLowerCase()));
     return {
       rank: lp.rank, id: String(lp.playerId), name: lp.name, record: lp.record, points: lp.points, status: lp.status,
@@ -750,6 +755,7 @@ async function refreshLive() {
     const lastSwiss = [...swiss].reverse().find(r => r.completed);
     if (lastSwiss) {
       const seeds = lastSwiss.id === last?.id ? players : (await relay('/standings/' + lastSwiss.id)).players;
+      state.live.swiss = { round: lastSwiss.name, players: seeds };
       const proundsData = [];
       for (const r of playoff) proundsData.push({ name: r.name, matches: r.started ? (await relay('/matches/' + r.id)).matches : [] });
       state.live.bracket = buildBracket(seeds, proundsData, swiss.every(r => r.completed), lastSwiss.name);
@@ -1025,8 +1031,11 @@ async function drawBackground(ctx, W, H, groups, art) {
 // ---------- current top 8 (after the latest completed round) ----------
 // The eight highest-ranked players still in the event, each on a card with their deck.
 function currentTop8() {
-  const ps = currentPlayers().filter(p => p.rank && p.rank < 9999 && !/drop/i.test(p.status || '')).sort((a, b) => a.rank - b.rank).slice(0, 8);
-  const round = state.live?.round || (() => { const k = Math.max(...state.rounds.keys()); return k > 0 ? `Round ${k}` : ''; })();
+  // When following live, use the latest completed Swiss round, so playoff placings don't replace the Swiss standings.
+  const sw = state.live?.swiss;
+  const source = sw ? withDecks(sw.players) : currentPlayers();
+  const ps = source.filter(p => p.rank && p.rank < 9999 && !/drop/i.test(p.status || '')).sort((a, b) => a.rank - b.rank).slice(0, 8);
+  const round = sw?.round || state.live?.round || (() => { const k = Math.max(...state.rounds.keys()); return k > 0 ? `Round ${k}` : ''; })();
   return { ps, round };
 }
 
