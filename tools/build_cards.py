@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild cards.js (leader/base names, aspects and art thumbnails) from swu-db.com.
+"""Rebuild cards.js (leader/base names, aspects and art thumbnails) and art/ from swu-db.com.
 
 Run from the repo root on macOS (uses the built-in `sips` to crop images):
     python3 tools/build_cards.py
@@ -8,7 +8,9 @@ import base64, json, os, re, subprocess, tempfile, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 API = "https://api.swu-db.com/cards/search?q=type:{}"
-OUT = os.path.join(os.path.dirname(__file__), "..", "cards.js")
+ROOT = os.path.join(os.path.dirname(__file__), "..")
+OUT = os.path.join(ROOT, "cards.js")
+ART = os.path.join(ROOT, "art")
 norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
 
 
@@ -21,19 +23,29 @@ def sips(*args):
     subprocess.run(["sips", *args], check=True, capture_output=True)
 
 
-def thumb(url, kind, tmp):
-    """Download a card image and crop the art: a square portrait for leaders, a wide strip for bases."""
-    raw = os.path.join(tmp, norm(url) + ".src")
-    out = os.path.join(tmp, norm(url) + ".jpg")
+def crop_art(url, kind, tmp, key):
+    """Download a card image and crop its art twice.
+
+    Returns a small data-URI thumbnail (a square portrait for leaders, a wide strip for bases) for the
+    page, and writes a larger crop to art/<kind>s/<key>.jpg for the shareable image.
+    """
+    raw = os.path.join(tmp, key + "." + kind + ".src")
+    small = os.path.join(tmp, key + "." + kind + ".jpg")
+    big = os.path.join(ART, kind + "s", key + ".jpg")
     urllib.request.urlretrieve(url, raw)
-    sips("-s", "format", "jpeg", "--resampleWidth", "600", raw, "--out", out)
+    sips("-s", "format", "jpeg", "--resampleWidth", "600", raw, "--out", small)
+    sips("-s", "format", "jpeg", "--resampleWidth", "1200", raw, "--out", big)
     if kind == "leader":
-        sips("-c", "215", "215", "--cropOffset", "45", "52", out)
-        sips("-Z", "112", "-s", "formatOptions", "72", out)
+        sips("-c", "215", "215", "--cropOffset", "45", "52", small)
+        sips("-Z", "112", "-s", "formatOptions", "72", small)
+        sips("-c", "600", "446", "--cropOffset", "84", "92", big)
+        sips("--resampleWidth", "420", "-s", "formatOptions", "70", big)
     else:
-        sips("-c", "190", "506", "--cropOffset", "78", "47", out)
-        sips("-Z", "280", "-s", "formatOptions", "70", out)
-    with open(out, "rb") as f:
+        sips("-c", "190", "506", "--cropOffset", "78", "47", small)
+        sips("-Z", "280", "-s", "formatOptions", "70", small)
+        sips("-c", "376", "1008", "--cropOffset", "158", "96", big)
+        sips("--resampleWidth", "760", "-s", "formatOptions", "70", big)
+    with open(small, "rb") as f:
         return "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
 
 
@@ -71,7 +83,8 @@ def build(kind, tmp):
                 e["g"] = fam
         try:
             if x.get("FrontArt"):
-                e["i"] = thumb(x["FrontArt"], kind, tmp)
+                e["i"] = crop_art(x["FrontArt"], kind, tmp, key)
+                e["h"] = f"art/{kind}s/{key}.jpg"
         except Exception as err:
             print(f"  no art for {name}: {err}")
         return key, e
@@ -79,6 +92,9 @@ def build(kind, tmp):
     with ThreadPoolExecutor(12) as pool:
         return dict(pool.map(make, entries.items()))
 
+
+for sub in ("leaders", "bases"):
+    os.makedirs(os.path.join(ART, sub), exist_ok=True)
 
 with tempfile.TemporaryDirectory() as tmp:
     data = {"leaders": build("leader", tmp), "bases": build("base", tmp)}
