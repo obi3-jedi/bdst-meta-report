@@ -564,7 +564,10 @@ async function makeImage() {
 
   // Art ring: one wedge per deck, sized by share, filled with its leader's art
   const cx = 1450, cy = 556, r1 = 430, r0 = 238;
-  const ring = groups.length > 24 ? [...groups.slice(0, 23), { other: true, count: groups.slice(23).reduce((s, g) => s + g.count, 0) }] : groups;
+  // Only decks with at least 5% of the field get their own wedge; the rest share one plain "Other" wedge so sizes stay true.
+  const RING_MIN = .05;
+  const big = groups.filter(g => g.count / n >= RING_MIN), small = groups.filter(g => g.count / n < RING_MIN);
+  const ring = small.length ? [...big, { other: true, count: small.reduce((s, g) => s + g.count, 0) }] : big;
   const sum = ring.reduce((s, g) => s + g.count, 0) || 1;
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 40;
   ctx.beginPath(); ctx.arc(cx, cy, r1 + 14, 0, Math.PI * 2); ctx.fillStyle = '#0b0405'; ctx.fill(); ctx.restore();
@@ -596,10 +599,8 @@ async function makeImage() {
     else ctx.fillStyle = '#2a0a0c';
     ctx.fillRect(bb.x, bb.y, bb.w, bb.h);
     ctx.restore();
-    if (!g.other) {
-      bands.push({ a, a1, label: g.base.toUpperCase(), dark: gi && (gi.aspect === 'Cunning' || gi.aspect === 'Heroism') });
-      if (g.count / sum >= .035) marks.push([(a + a1) / 2, pct(g.count / n)]);
-    }
+    bands.push({ a, a1, label: g.other ? 'OTHER DECKS' : g.base.toUpperCase(), dark: gi && (gi.aspect === 'Cunning' || gi.aspect === 'Heroism') });
+    if (g.count / sum >= .035) marks.push([(a + a1) / 2, pct(g.count / n)]);
     a = a1;
   }
   ctx.strokeStyle = '#0b0405'; ctx.lineWidth = 5; ctx.beginPath();
