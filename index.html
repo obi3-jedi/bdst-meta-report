@@ -175,9 +175,15 @@ details.row summary:focus-visible { outline: 2px solid var(--focus); outline-off
 <div class="modal" id="modal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="hdr"><h3 id="modal-title">Share image</h3><button type="button" class="x" id="modal-close" aria-label="Close">×</button></div>
-    <div class="seg" role="group" aria-label="Chart" id="chartseg">
-      <button type="button" id="chart-treemap" aria-pressed="true">Treemap</button>
-      <button type="button" id="chart-ring" aria-pressed="false">Ring</button>
+    <div class="actions">
+      <div class="seg" role="group" aria-label="Size" id="fmtseg">
+        <button type="button" id="fmt-wide" aria-pressed="true">16:9</button>
+        <button type="button" id="fmt-tall" aria-pressed="false">4:5 Facebook</button>
+      </div>
+      <div class="seg" role="group" aria-label="Chart" id="chartseg">
+        <button type="button" id="chart-treemap" aria-pressed="true">Treemap</button>
+        <button type="button" id="chart-ring" aria-pressed="false">Ring</button>
+      </div>
     </div>
     <img id="shot" alt="BDST deck breakdown graphic">
     <div class="actions">
@@ -193,7 +199,7 @@ details.row summary:focus-visible { outline: 2px solid var(--focus); outline-off
 <script>
 const SAMPLE_CSV = "Rank,TeamPlayers1DisplayName,Decklists1DecklistName,MatchRecord,GameRecord,TeamStatusDescription,MatchingMethodDescription,RoundNumber,TournamentId\n1,Player 6,\"Yoda, Sensing Darkness - Strangled Cliffs\",7-0-2,15-5-3,Active,Playoffs/Top Cut,9,sample\n2,Player 20,\"Han Solo, Worth the Risk - Shadowed Undercity\",6-2-1,14-8-3,Eliminated,Playoffs/Top Cut,9,sample\n3,Player 15,\"Iden Versio, Inferno Squad Commander - Data Vault\",5-1-2,11-5-6,Eliminated,Playoffs/Top Cut,9,sample\n4,Player 9,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",5-1-2,11-2-6,Eliminated,Playoffs/Top Cut,9,sample\n5,Player 33,\"Yoda, Sensing Darkness - Fortress Vader\",4-2-1,10-7-0,Eliminated,Playoffs/Top Cut,9,sample\n6,Player 37,\"Han Solo, Worth the Risk - Shadowed Undercity\",4-2-1,10-7-3,Eliminated,Playoffs/Top Cut,9,sample\n7,Player 28,\"Boba Fett, Any Methods Necessary - Theed Palace\",4-2-1,9-6-3,Eliminated,Playoffs/Top Cut,9,sample\n8,Player 13,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-3-0,11-7-0,Eliminated,Playoffs/Top Cut,9,sample\n9,Player 27,\"Han Solo, Never Tell Me the Odds - Tarkintown\",4-2-0,9-6-0,Cut,Playoffs/Top Cut,9,sample\n10,Player 31,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",4-2-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n11,Player 1,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-2-0,8-5-0,Cut,Playoffs/Top Cut,9,sample\n12,Player 36,\"Emperor Palpatine, Galactic Ruler - Colossus\",3-2-1,7-6-0,Cut,Playoffs/Top Cut,9,sample\n13,Player 30,\"Admiral Piett, Commanding the Armada - Nadiri Dockyards\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n14,Player 11,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n15,Player 16,\"Luke Skywalker, Hero of Yavin - Data Vault\",3-3-0,7-7-0,Cut,Playoffs/Top Cut,9,sample\n16,Player 34,\"Darth Maul, Sith Revealed - Vergence Temple\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n17,Player 35,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n18,Player 23,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",2-2-0,5-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n19,Player 18,\"Anakin Skywalker, What it Takes to Win - Shadowed Undercity\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n20,Player 22,\"Quinlan Vos, Sticking the Landing - Tarkintown\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n21,Player 8,\"Captain Phasma, Chrome Dome - Energy Conversion Lab\",2-4-0,4-9-0,Cut,Playoffs/Top Cut,9,sample\n22,Player 25,\"Han Solo, Worth the Risk - Shadowed Undercity\",2-2-0,5-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n23,Player 24,\"Yoda, Sensing Darkness - Fortress Vader\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n24,Player 14,\"Boba Fett, Any Methods Necessary - Data Vault\",2-3-0,6-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n25,Player 3,\"Boba Fett, Any Methods Necessary - Data Vault\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n26,Player 29,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",2-4-0,7-8-0,Cut,Playoffs/Top Cut,9,sample\n27,Player 32,\"Captain Phasma, Chrome Dome - Data Vault\",1-1-1,3-4-0,Dropped (Staff),Playoffs/Top Cut,9,sample\n28,Player 17,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",1-1-1,2-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n29,Player 2,\"Avar Kriss, Marshal of Starlight - Nightsister Lair\",1-1-1,4-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n30,Player 19,\"Mace Windu, Vaapad Form Master - Shadowed Undercity\",1-2-0,2-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n31,Player 12,\"Quinlan Vos, Sticking the Landing - Tarkintown\",1-2-0,3-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n32,Player 7,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",1-3-0,4-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n33,Player 5,\"Rey, Nobody - Nightsister Lair\",1-3-0,2-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n34,Player 4,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",1-2-0,2-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n35,Player 26,\"Grand Admiral Thrawn, ...How Unfortunate - Data Vault\",0-3-0,3-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n36,Player 10,[[[Decklist]]],0-3-0,0-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n37,Player 21,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",0-3-0,0-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n";
 const CARDS = window.SWU_CARDS || { leaders: {}, bases: {} };
-const state = { rounds: new Map(), tid: null, gen: true, sample: false, chart: 'treemap' };
+const state = { rounds: new Map(), tid: null, gen: true, sample: false, chart: 'treemap', format: 'wide' };
 
 // ---------- card lookup ----------
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -496,8 +502,8 @@ function squarify(items, x, y, w, h) {
   return out;
 }
 
-async function drawTreemap(ctx, groups, n, { D, B, M }) {
-  const X = 1010, Y = 40, W = 870, H = 960, GAP = 6;
+async function drawTreemap(ctx, groups, n, { X, Y, W, H }) {
+  const { D, B, M } = FONTS, GAP = 6;
   const tiles = squarify(groups.map(g => ({ g, value: g.count })), X, Y, W, H);
   for (const t of tiles) {
     const g = t.g, x = t.x + GAP / 2, y = t.y + GAP / 2, w = t.w - GAP, h = t.h - GAP;
@@ -560,22 +566,142 @@ async function drawTreemap(ctx, groups, n, { D, B, M }) {
 }
 function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, Math.min(r, w / 2, h / 2)); }
 
+const FONTS = { D: '"Barlow Condensed", "Arial Narrow", sans-serif', B: 'Barlow, system-ui, sans-serif', M: '"JetBrains Mono", Menlo, monospace' };
+const FOOTNOTE = '*Percentages are rounded so may not add to 100%  ·  Data: melee.gg  ·  Card art © Lucasfilm Ltd. & FFG via swu-db.com';
+
+// Framed title box: logo on the left, event name and counts right-aligned.
+function drawTitleBox(ctx, { X0, X1, Y, H, LW, big, small }, logo, title, sub) {
+  const { D, B } = FONTS;
+  ctx.strokeStyle = C.white; ctx.lineWidth = 3; ctx.strokeRect(X0, Y, X1 - X0, H);
+  if (logo) ctx.drawImage(logo, X0 + 24, Y + (H - LW * logo.height / logo.width) / 2, LW, LW * logo.height / logo.width);
+  const tmax = X1 - X0 - LW - 72;
+  let fs = big; ctx.font = `italic 800 ${fs}px ${D}`;
+  while (fs > big * .58 && ctx.measureText(title).width > tmax) { fs -= 2; ctx.font = `italic 800 ${fs}px ${D}`; }
+  ctx.textAlign = 'right'; ctx.fillStyle = C.white; ctx.fillText(fit(ctx, title, tmax), X1 - 26, Y + H * .58);
+  ctx.font = `600 ${small}px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText(fit(ctx, sub, tmax), X1 - 26, Y + H * .84);
+  ctx.textAlign = 'left';
+}
+
+// Ring: one wedge per deck with 5%+ share (the rest share an "Other" wedge), leader art outside, base inside.
+// Sizes are scaled from the 16:9 layout (r1 = 430) so the same drawing works at any size.
+async function drawRing(ctx, groups, n, { cx, cy, r1, r0 }, logo, centreTitle, centreSub) {
+  const { D, B, M } = FONTS, s = r1 / 430;
+  // Compare the rounded share, so a deck shown as "5%" in the table (e.g. 2 of 44) makes the cut.
+  const RING_MIN = 5, inRing = g => Math.round(g.count / n * 100) >= RING_MIN;
+  const big = groups.filter(inRing), small = groups.filter(g => !inRing(g));
+  const ring = small.length ? [...big, { other: true, count: small.reduce((t, g) => t + g.count, 0) }] : big;
+  const sum = ring.reduce((t, g) => t + g.count, 0) || 1;
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 40 * s;
+  ctx.beginPath(); ctx.arc(cx, cy, r1 + 14 * s, 0, Math.PI * 2); ctx.fillStyle = '#0b0405'; ctx.fill(); ctx.restore();
+  const rb = r0 + 64 * s;
+  const sectorBox = (ra, rz, a0, a1, min) => {
+    const pts = [];
+    for (let k = 0; k <= 24; k++) { const t = a0 + (a1 - a0) * k / 24; pts.push([cx + rz * Math.cos(t), cy + rz * Math.sin(t)], [cx + ra * Math.cos(t), cy + ra * Math.sin(t)]); }
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    let x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+    if (w < min) { x -= (min - w) / 2; w = min; }
+    if (h < min) { y -= (min - h) / 2; h = min; }
+    return { x, y, w, h };
+  };
+  let a = -Math.PI / 2;
+  const marks = [], bands = [];
+  for (const g of ring) {
+    const a1 = a + g.count / sum * Math.PI * 2;
+    ctx.save(); sectorPath(ctx, cx, cy, rb, r1, a, a1); ctx.clip();
+    const im = g.other ? null : await leaderArt(g.leader), lb = sectorBox(rb, r1, a, a1, 220 * s);
+    if (im) drawCover(ctx, im, lb.x, lb.y, lb.w, lb.h, .25);
+    else { ctx.fillStyle = '#3a0d10'; ctx.fillRect(lb.x, lb.y, lb.w, lb.h); }
+    ctx.restore();
+    ctx.save(); sectorPath(ctx, cx, cy, r0, rb, a, a1); ctx.clip();
+    const gi = g.other ? null : genericInfo.get(g.base), bb = sectorBox(r0, rb, a, a1, 140 * s);
+    const bi = g.other || gi ? null : await baseArt(g.base);
+    if (gi) ctx.fillStyle = C.asp[gi.aspect];
+    else if (bi) { drawCover(ctx, bi, bb.x, bb.y, bb.w, bb.h, .5); ctx.fillStyle = 'rgba(0,0,0,.28)'; }
+    else ctx.fillStyle = '#2a0a0c';
+    ctx.fillRect(bb.x, bb.y, bb.w, bb.h);
+    ctx.restore();
+    bands.push({ a, a1, label: g.other ? 'OTHER DECKS' : g.base.toUpperCase(), dark: gi && (gi.aspect === 'Cunning' || gi.aspect === 'Heroism') });
+    if (g.count / sum >= .035) marks.push([(a + a1) / 2, pct(g.count / n)]);
+    a = a1;
+  }
+  ctx.strokeStyle = '#0b0405'; ctx.lineWidth = 5 * s; ctx.beginPath();
+  a = -Math.PI / 2;
+  for (const g of ring) { ctx.moveTo(cx + r0 * Math.cos(a), cy + r0 * Math.sin(a)); ctx.lineTo(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a)); a += g.count / sum * Math.PI * 2; }
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, rb, 0, Math.PI * 2); ctx.lineWidth = 4 * s; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, r1 + 10 * s, 0, Math.PI * 2); ctx.strokeStyle = C.red; ctx.lineWidth = 6 * s; ctx.stroke();
+
+  // Base names along the inner band, wherever the wedge is wide enough to fit them
+  const rm = (r0 + rb) / 2;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const b of bands) {
+    const m = (b.a + b.a1) / 2, room = rm * (b.a1 - b.a) - 12 * s;
+    let fsz = 17 * s; ctx.font = `700 ${fsz}px ${D}`;
+    while (fsz > 10 && ctx.measureText(b.label).width > room) { fsz--; ctx.font = `700 ${fsz}px ${D}`; }
+    if (ctx.measureText(b.label).width > room) continue;
+    ctx.save();
+    ctx.translate(cx + rm * Math.cos(m), cy + rm * Math.sin(m));
+    ctx.rotate(Math.sin(m) > 0 ? m - Math.PI / 2 : m + Math.PI / 2);
+    if (!b.dark) { ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.strokeText(b.label, 0, 1); }
+    ctx.fillStyle = b.dark ? '#141414' : '#ffffff'; ctx.fillText(b.label, 0, 1);
+    ctx.restore();
+  }
+  // Share badges on the leader band
+  for (const [m, share] of marks) {
+    const mx = cx + (r1 - 38 * s) * Math.cos(m), my = cy + (r1 - 38 * s) * Math.sin(m);
+    ctx.beginPath(); ctx.arc(mx, my, 26 * s, 0, Math.PI * 2); ctx.fillStyle = 'rgba(11,4,5,.9)'; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = C.red; ctx.stroke();
+    ctx.fillStyle = C.white; ctx.font = `700 ${17 * s}px ${M}`; ctx.fillText(share, mx, my + 1);
+  }
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `600 ${Math.max(14, 17 * s)}px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText('OUTER RING: LEADER   ·   INNER RING: BASE', cx, cy + r1 + 46 * s);
+
+  // Centre
+  const cg = ctx.createRadialGradient(cx, cy - 60 * s, 20 * s, cx, cy, r0);
+  cg.addColorStop(0, '#3a0a0d'); cg.addColorStop(1, '#160506');
+  ctx.beginPath(); ctx.arc(cx, cy, r0 - 4 * s, 0, Math.PI * 2); ctx.fillStyle = cg; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = C.white; ctx.stroke();
+  if (logo) { const w = 280 * s, h = w * logo.height / logo.width; ctx.drawImage(logo, cx - w / 2, cy - 168 * s, w, h); }
+  ctx.textAlign = 'center'; ctx.fillStyle = C.white;
+  let cfs = 60 * s; ctx.font = `italic 800 ${cfs}px ${D}`;
+  while (cfs > 34 * s && ctx.measureText(centreTitle).width > 400 * s) { cfs -= 1; ctx.font = `italic 800 ${cfs}px ${D}`; }
+  ctx.fillText(fit(ctx, centreTitle, 400 * s), cx, cy + 22 * s);
+  ctx.font = `italic 800 ${40 * s}px ${D}`; ctx.fillStyle = C.red;
+  ctx.fillText('DECK BREAKDOWN', cx, cy + 72 * s);
+  ctx.font = `600 ${20 * s}px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText(centreSub, cx, cy + 114 * s);
+  ctx.textAlign = 'left';
+}
+
+// Blurred art of the most played deck's leader, washed red.
+async function drawBackground(ctx, W, H, groups, art) {
+  ctx.fillStyle = '#100506'; ctx.fillRect(0, 0, W, H);
+  const bgArt = groups[0] ? await leaderArt(groups[0].leader) : null;
+  if (bgArt) { ctx.save(); ctx.globalAlpha = .9; ctx.drawImage(blurred(bgArt, art.w, art.h), art.x, art.y, art.w, art.h); ctx.restore(); }
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#b3070d'; ctx.fillRect(art.x, art.y, art.w, art.h); ctx.restore();
+}
+
 async function makeImage() {
   const ps = finalRound(); if (!ps.length) return null;
   await Promise.all(['italic 800 80px "Barlow Condensed"', '700 40px "Barlow Condensed"', '600 22px Barlow', '700 22px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
-  const W = 1920, H = 1080;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
-  const D = '"Barlow Condensed", "Arial Narrow", sans-serif', B = 'Barlow, system-ui, sans-serif', M = '"JetBrains Mono", Menlo, monospace';
   const known = ps.filter(p => p.known), total = ps.length, n = known.length || 1;
   const groups = deckGroups(known);
   const ev = document.getElementById('evname').value.trim();
+  const logo = await loadImg('bdst-logo.png');
+  const counts = `${total} PLAYERS  ·  ${groups.length} DECKS`;
+  return state.format === 'tall'
+    ? makeTall(groups, n, ev, logo, counts)
+    : makeWide(groups, n, ev, logo, counts);
+}
 
-  // Background: blurred art of the most played deck's leader, washed red, fading to a dark panel on the left.
-  ctx.fillStyle = '#100506'; ctx.fillRect(0, 0, W, H);
-  const bgArt = groups[0] ? await leaderArt(groups[0].leader) : null;
-  if (bgArt) { ctx.save(); ctx.globalAlpha = .9; ctx.drawImage(blurred(bgArt, 1100, H), 860, 0, 1100, H); ctx.restore(); }
-  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#b3070d'; ctx.fillRect(820, 0, W - 820, H); ctx.restore();
+// 16:9 (1920 × 1080): title and table on the left, chart on the right.
+async function makeWide(groups, n, ev, logo, counts) {
+  const { D, B, M } = FONTS, W = 1920, H = 1080;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  await drawBackground(ctx, W, H, groups, { x: 860, y: 0, w: 1100, h: H });
   const shade = ctx.createLinearGradient(0, 0, 1260, 0);
   shade.addColorStop(0, 'rgba(22,5,7,.97)'); shade.addColorStop(.78, 'rgba(26,5,7,.93)'); shade.addColorStop(1, 'rgba(26,5,7,0)');
   ctx.fillStyle = shade; ctx.fillRect(0, 0, W, H);
@@ -584,19 +710,8 @@ async function makeImage() {
   ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
   ctx.textBaseline = 'alphabetic';
 
-  // Title box
   const X0 = 40, X1 = 980;
-  ctx.strokeStyle = C.white; ctx.lineWidth = 3; ctx.strokeRect(X0, 40, X1 - X0, 156);
-  const logo = await loadImg('bdst-logo.png');
-  const LW = 230;
-  if (logo) ctx.drawImage(logo, X0 + 24, 40 + (156 - LW * logo.height / logo.width) / 2, LW, LW * logo.height / logo.width);
-  const tmax = X1 - X0 - LW - 72;
-  const title = (ev || 'Deck Breakdown').toUpperCase();
-  let fs = 76; ctx.font = `italic 800 ${fs}px ${D}`;
-  while (fs > 44 && ctx.measureText(title).width > tmax) { fs -= 2; ctx.font = `italic 800 ${fs}px ${D}`; }
-  ctx.textAlign = 'right'; ctx.fillStyle = C.white; ctx.fillText(fit(ctx, title, tmax), X1 - 26, 130);
-  ctx.font = `600 22px ${B}`; ctx.fillStyle = C.soft;
-  ctx.fillText(`STAR WARS: UNLIMITED  ·  ${total} PLAYERS  ·  ${groups.length} DECKS`, X1 - 26, 172);
+  drawTitleBox(ctx, { X0, X1, Y: 40, H: 156, LW: 230, big: 76, small: 22 }, logo, (ev || 'Deck Breakdown').toUpperCase(), `STAR WARS: UNLIMITED  ·  ${counts}`);
 
   // Main table
   const cols = { name: 680, d1: 700, d2: 840, c1: 770, c2: 910 };
@@ -650,103 +765,60 @@ async function makeImage() {
     ctx.stroke();
   }
 
-  if (state.chart === 'treemap') await drawTreemap(ctx, groups, n, { D, B, M });
-  else {
-    // Art ring: one wedge per deck, sized by share, filled with its leader's art
-    const cx = 1450, cy = 556, r1 = 430, r0 = 238;
-    // Only decks with at least 5% of the field get their own wedge; the rest share one plain "Other" wedge so sizes stay true.
-    // Compare the rounded share, so a deck shown as "5%" in the table (e.g. 2 of 44) makes the cut.
-    const RING_MIN = 5, inRing = g => Math.round(g.count / n * 100) >= RING_MIN;
-    const big = groups.filter(inRing), small = groups.filter(g => !inRing(g));
-    const ring = small.length ? [...big, { other: true, count: small.reduce((s, g) => s + g.count, 0) }] : big;
-    const sum = ring.reduce((s, g) => s + g.count, 0) || 1;
-    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 40;
-    ctx.beginPath(); ctx.arc(cx, cy, r1 + 14, 0, Math.PI * 2); ctx.fillStyle = '#0b0405'; ctx.fill(); ctx.restore();
-    // Each wedge has two bands: the leader's art outside, the base inside (its art, or its aspect colour for a colour group).
-    const rb = r0 + 64;
-    const sectorBox = (ra, rz, a0, a1, min) => {
-      const pts = [];
-      for (let k = 0; k <= 24; k++) { const t = a0 + (a1 - a0) * k / 24; pts.push([cx + rz * Math.cos(t), cy + rz * Math.sin(t)], [cx + ra * Math.cos(t), cy + ra * Math.sin(t)]); }
-      const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
-      let x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x, h = Math.max(...ys) - y;
-      if (w < min) { x -= (min - w) / 2; w = min; }
-      if (h < min) { y -= (min - h) / 2; h = min; }
-      return { x, y, w, h };
-    };
-    let a = -Math.PI / 2;
-    const marks = [], bands = [];
-    for (let i = 0; i < ring.length; i++) {
-      const g = ring[i], a1 = a + g.count / sum * Math.PI * 2;
-      ctx.save(); sectorPath(ctx, cx, cy, rb, r1, a, a1); ctx.clip();
-      const im = g.other ? null : await leaderArt(g.leader), lb = sectorBox(rb, r1, a, a1, 220);
-      if (im) drawCover(ctx, im, lb.x, lb.y, lb.w, lb.h, .25);
-      else { ctx.fillStyle = '#3a0d10'; ctx.fillRect(lb.x, lb.y, lb.w, lb.h); }
-      ctx.restore();
-      ctx.save(); sectorPath(ctx, cx, cy, r0, rb, a, a1); ctx.clip();
-      const gi = g.other ? null : genericInfo.get(g.base), bb = sectorBox(r0, rb, a, a1, 140);
-      const bi = g.other || gi ? null : await baseArt(g.base);
-      if (gi) ctx.fillStyle = C.asp[gi.aspect];
-      else if (bi) { drawCover(ctx, bi, bb.x, bb.y, bb.w, bb.h, .5); ctx.fillStyle = 'rgba(0,0,0,.28)'; }
-      else ctx.fillStyle = '#2a0a0c';
-      ctx.fillRect(bb.x, bb.y, bb.w, bb.h);
-      ctx.restore();
-      bands.push({ a, a1, label: g.other ? 'OTHER DECKS' : g.base.toUpperCase(), dark: gi && (gi.aspect === 'Cunning' || gi.aspect === 'Heroism') });
-      if (g.count / sum >= .035) marks.push([(a + a1) / 2, pct(g.count / n)]);
-      a = a1;
-    }
-    ctx.strokeStyle = '#0b0405'; ctx.lineWidth = 5; ctx.beginPath();
-    a = -Math.PI / 2;
-    for (const g of ring) { ctx.moveTo(cx + r0 * Math.cos(a), cy + r0 * Math.sin(a)); ctx.lineTo(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a)); a += g.count / sum * Math.PI * 2; }
-    ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, rb, 0, Math.PI * 2); ctx.lineWidth = 4; ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, r1 + 10, 0, Math.PI * 2); ctx.strokeStyle = C.red; ctx.lineWidth = 6; ctx.stroke();
-
-    // Base names along the inner band, wherever the wedge is wide enough to fit them
-    const rm = (r0 + rb) / 2;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (const b of bands) {
-      const m = (b.a + b.a1) / 2, room = rm * (b.a1 - b.a) - 12;
-      let fsz = 17; ctx.font = `700 ${fsz}px ${D}`;
-      while (fsz > 11 && ctx.measureText(b.label).width > room) { fsz--; ctx.font = `700 ${fsz}px ${D}`; }
-      if (ctx.measureText(b.label).width > room) continue;
-      ctx.save();
-      ctx.translate(cx + rm * Math.cos(m), cy + rm * Math.sin(m));
-      ctx.rotate(Math.sin(m) > 0 ? m - Math.PI / 2 : m + Math.PI / 2);
-      if (!b.dark) { ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.strokeText(b.label, 0, 1); }
-      ctx.fillStyle = b.dark ? '#141414' : '#ffffff'; ctx.fillText(b.label, 0, 1);
-      ctx.restore();
-    }
-
-    // Share badges on the leader band
-    for (const [m, share] of marks) {
-      const mx = cx + (r1 - 38) * Math.cos(m), my = cy + (r1 - 38) * Math.sin(m);
-      ctx.beginPath(); ctx.arc(mx, my, 26, 0, Math.PI * 2); ctx.fillStyle = 'rgba(11,4,5,.9)'; ctx.fill();
-      ctx.lineWidth = 2.5; ctx.strokeStyle = C.red; ctx.stroke();
-      ctx.fillStyle = C.white; ctx.font = `700 17px ${M}`; ctx.fillText(share, mx, my + 1);
-    }
-    ctx.textBaseline = 'alphabetic';
-    ctx.font = `600 17px ${B}`; ctx.fillStyle = C.soft;
-    ctx.fillText('OUTER RING: LEADER   ·   INNER RING: BASE', cx, cy + r1 + 46);
-
-    // Centre
-    const cg = ctx.createRadialGradient(cx, cy - 60, 20, cx, cy, r0);
-    cg.addColorStop(0, '#3a0a0d'); cg.addColorStop(1, '#160506');
-    ctx.beginPath(); ctx.arc(cx, cy, r0 - 4, 0, Math.PI * 2); ctx.fillStyle = cg; ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = C.white; ctx.stroke();
-    if (logo) { const w = 280, h = w * logo.height / logo.width; ctx.drawImage(logo, cx - w / 2, cy - 168, w, h); }
-    ctx.textAlign = 'center'; ctx.fillStyle = C.white;
-    const ct = (ev || 'Meta Report').toUpperCase();
-    let cfs = 60; ctx.font = `italic 800 ${cfs}px ${D}`;
-    while (cfs > 34 && ctx.measureText(ct).width > 400) { cfs -= 2; ctx.font = `italic 800 ${cfs}px ${D}`; }
-    ctx.fillText(fit(ctx, ct, 400), cx, cy + 22);
-    ctx.font = `italic 800 40px ${D}`; ctx.fillStyle = C.red;
-    ctx.fillText('DECK BREAKDOWN', cx, cy + 72);
-    ctx.font = `600 20px ${B}`; ctx.fillStyle = C.soft;
-    ctx.fillText(`${total} PLAYERS  ·  ${groups.length} DECKS`, cx, cy + 114);
-  }
+  if (state.chart === 'treemap') await drawTreemap(ctx, groups, n, { X: 1010, Y: 40, W: 870, H: 960 });
+  else await drawRing(ctx, groups, n, { cx: 1450, cy: 556, r1: 430, r0: 238 }, logo, (ev || 'Meta Report').toUpperCase(), counts);
 
   ctx.textAlign = 'right'; ctx.font = `500 15px ${B}`; ctx.fillStyle = C.soft;
-  ctx.fillText('*Percentages are rounded so may not add to 100%  ·  Data: melee.gg  ·  Card art © Lucasfilm Ltd. & FFG via swu-db.com', W - 40, H - 22);
+  ctx.fillText(FOOTNOTE, W - 40, H - 22);
+  ctx.textAlign = 'left';
+  return cv;
+}
+
+// 4:5 (1080 × 1350) for Facebook and Instagram feeds: title on top, chart in the middle, two-column table below.
+async function makeTall(groups, n, ev, logo, counts) {
+  const { D, B, M } = FONTS, W = 1080, H = 1350, X0 = 40, X1 = W - 40;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  await drawBackground(ctx, W, H, groups, { x: 0, y: 0, w: W, h: H });
+  ctx.fillStyle = 'rgba(20,5,7,.72)'; ctx.fillRect(0, 0, W, H);
+  const vig = ctx.createRadialGradient(W / 2, 520, 200, W / 2, 520, 900);
+  vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.6)');
+  ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = 'alphabetic';
+
+  drawTitleBox(ctx, { X0, X1, Y: 40, H: 136, LW: 190, big: 64, small: 19 }, logo, (ev || 'Deck Breakdown').toUpperCase(), `STAR WARS: UNLIMITED  ·  ${counts}`);
+
+  // Chart
+  const CY0 = 196, CH = 624;
+  if (state.chart === 'treemap') await drawTreemap(ctx, groups, n, { X: X0 - 3, Y: CY0, W: X1 - X0 + 6, H: CH });
+  else await drawRing(ctx, groups, n, { cx: W / 2, cy: CY0 + 296, r1: 290, r0: 160 }, logo, (ev || 'Meta Report').toUpperCase(), counts);
+
+  // Two-column deck table
+  const T0 = CY0 + CH + 52, T1 = H - 50, HEAD = 40, rh = 26, colW = (X1 - X0) / 2;
+  const per = Math.floor((T1 - T0 - HEAD - 12) / rh);
+  const list = groups.length > per * 2 ? [...groups.slice(0, per * 2 - 1), { label: `+${groups.length - per * 2 + 1} more decks`, more: true }] : groups;
+  const rows = Math.ceil(list.length / 2), ncol = list.length > rows ? 2 : 1;
+  const tEnd = T0 + HEAD + rows * rh + 12;
+  ctx.strokeStyle = C.white; ctx.lineWidth = 3; ctx.strokeRect(X0, T0, X1 - X0, tEnd - T0);
+  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X0, T0 + HEAD); ctx.lineTo(X1, T0 + HEAD);
+  if (ncol > 1) { ctx.moveTo(X0 + colW, T0); ctx.lineTo(X0 + colW, tEnd); }
+  ctx.stroke();
+  for (let c = 0; c < ncol; c++) {
+    const cx = X0 + c * colW;
+    ctx.font = `700 18px ${D}`; ctx.fillStyle = C.white;
+    ctx.textAlign = 'left'; ctx.fillText('DECK', cx + 52, T0 + 27);
+    ctx.textAlign = 'center'; ctx.fillText('PLAYERS', cx + colW - 108, T0 + 27); ctx.fillText('SHARE', cx + colW - 40, T0 + 27);
+  }
+  list.forEach((g, i) => {
+    const c = Math.floor(i / rows), r = i % rows, cx = X0 + c * colW, yy = T0 + HEAD + 6 + r * rh + rh * .74;
+    if (!g.more) { ctx.font = `700 14px ${M}`; ctx.fillStyle = C.red; ctx.textAlign = 'left'; ctx.fillText(String(i + 1).padStart(2, '0'), cx + 16, yy - 1); }
+    ctx.font = `700 20px ${D}`; ctx.fillStyle = g.more ? C.soft : C.white; ctx.textAlign = 'left';
+    ctx.fillText(fit(ctx, g.label.toUpperCase(), colW - 200), cx + 52, yy);
+    if (!g.more) { ctx.textAlign = 'center'; ctx.fillText(String(g.count), cx + colW - 108, yy); ctx.fillText(pct(g.count / n), cx + colW - 40, yy); }
+  });
+
+  ctx.textAlign = 'center'; ctx.font = `500 13px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText(FOOTNOTE, W / 2, H - 20);
   ctx.textAlign = 'left';
   return cv;
 }
@@ -754,6 +826,11 @@ async function makeImage() {
 let lastBlob = null, downloads = null;
 // Inside the claude.ai viewer, files are saved through the downloads capability; opened directly, a plain link works.
 window.claude?.use?.('downloads').then(d => { downloads = d; }).catch(() => {});
+function shareHint() {
+  document.getElementById('share-msg').textContent = (state.format === 'tall'
+    ? '1080 × 1350 (4:5), sized for Facebook and Instagram feeds.'
+    : '1920 × 1080 (16:9), sized for Discord and YouTube.') + ' Right-click the image (or press and hold on a phone) to save it.';
+}
 async function refreshShot() {
   const cv = await makeImage(); if (!cv) return false;
   lastBlob = await new Promise(r => cv.toBlob(r, 'image/png'));
@@ -764,7 +841,7 @@ async function openShare() {
   if (!(await refreshShot())) return;
   let topLevel = false; try { topLevel = window.top === window.self; } catch (e) {}
   document.getElementById('dl').hidden = !(topLevel || downloads);
-  document.getElementById('share-msg').textContent = '1920 × 1080, sized for Discord, YouTube and Facebook. Right-click the image (or press and hold on a phone) to save it.';
+  shareHint();
   document.getElementById('modal').hidden = false;
   document.getElementById('modal-close').focus();
 }
@@ -786,6 +863,8 @@ document.getElementById('evname').addEventListener('input', e => { if (!state.sa
 document.getElementById('share').addEventListener('click', openShare);
 for (const [id, v] of [['chart-treemap', 'treemap'], ['chart-ring', 'ring']])
   document.getElementById(id).addEventListener('click', () => { state.chart = v; setPressed('chartseg', id); refreshShot(); });
+for (const [id, v] of [['fmt-wide', 'wide'], ['fmt-tall', 'tall']])
+  document.getElementById(id).addEventListener('click', () => { state.format = v; setPressed('fmtseg', id); shareHint(); refreshShot(); });
 document.getElementById('modal-close').addEventListener('click', () => { document.getElementById('modal').hidden = true; });
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') e.target.hidden = true; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('modal').hidden = true; });
