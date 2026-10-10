@@ -5,6 +5,7 @@
 // a general-purpose proxy:
 //   GET /tournament/:id  -> { id, name, rounds: [{ id, name, started, completed }] }
 //   GET /standings/:roundId -> { roundId, players: [{ rank, playerId, name, username, record, points, status }] }
+//   GET /matches/:roundId -> { roundId, matches: [{ table, hasResult, result, players: [{ playerId, name, gameWins }] }] }
 
 const MELEE = 'https://melee.gg';
 const ALLOWED_ORIGINS = [
@@ -78,6 +79,35 @@ async function standings(roundId) {
   return { roundId: Number(roundId), players };
 }
 
+async function matches(roundId) {
+  const body = new URLSearchParams({
+    draw: '1', start: '0', length: '500',
+    'columns[0][data]': 'TableNumber', 'columns[0][name]': 'TableNumber', 'columns[0][searchable]': 'true',
+    'columns[0][orderable]': 'true', 'columns[0][search][value]': '', 'columns[0][search][regex]': 'false',
+    'order[0][column]': '0', 'order[0][dir]': 'asc', 'search[value]': '', 'search[regex]': 'false',
+  });
+  const res = await fetch(`${MELEE}/Match/GetRoundMatches/${roundId}`, {
+    method: 'POST',
+    headers: { ...BROWSER_HEADERS, Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  if (!res.ok) throw new Error(`melee.gg returned ${res.status} for the matches`);
+  const data = await res.json();
+  if (!Array.isArray(data.data)) throw new Error(data.Message || 'melee.gg did not return any matches');
+  return {
+    roundId: Number(roundId),
+    matches: data.data.map(m => ({
+      table: m.TableNumber,
+      hasResult: !!m.HasResult,
+      result: m.ResultString || '',
+      players: (m.Competitors || []).map(c => {
+        const p = c.Team?.Players?.[0] || {};
+        return { playerId: p.ID ?? null, name: p.DisplayName || p.Username || 'Player', gameWins: c.GameWins ?? 0 };
+      }),
+    })),
+  };
+}
+
 export default {
   async fetch(request) {
     const origin = request.headers.get('Origin') || '';
@@ -89,7 +119,8 @@ export default {
       let m;
       if ((m = path.match(/^\/tournament\/(\d{1,9})$/))) return json(await tournament(m[1]), 200, origin);
       if ((m = path.match(/^\/standings\/(\d{1,9})$/))) return json(await standings(m[1]), 200, origin);
-      return json({ error: 'Not found. Use /tournament/<id> or /standings/<roundId>.' }, 404, origin, 3600);
+      if ((m = path.match(/^\/matches\/(\d{1,9})$/))) return json(await matches(m[1]), 200, origin);
+      return json({ error: 'Not found. Use /tournament/<id>, /standings/<roundId> or /matches/<roundId>.' }, 404, origin, 3600);
     } catch (e) {
       return json({ error: e.message || 'Could not reach melee.gg.' }, 502, origin, 0);
     }

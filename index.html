@@ -158,6 +158,29 @@ table.st .none { color: var(--muted); }
 table.st tr.dropped td { opacity: .5; }
 .tag { font: 600 10px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; background: rgba(255, 255, 255, .1); color: var(--muted); margin-left: 6px; }
 
+/* Top 8 bracket */
+.bracket { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 18px; }
+.bcol { display: grid; grid-template-rows: auto 1fr; gap: 10px; min-width: 0; }
+.bstack { display: flex; flex-direction: column; justify-content: space-around; gap: 14px; }
+.bcol h4 { margin: 0; font: italic 800 15px/1 var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--red); }
+.match { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); }
+.mrow { display: grid; grid-template-columns: 1.6rem 42px minmax(0, 1fr) 1.4rem; gap: 10px; align-items: center; padding: 8px 10px; }
+.mrow + .mrow { border-top: 1px solid var(--line); }
+.mrow.win { box-shadow: inset 4px 0 0 var(--red); }
+.mrow.lose { opacity: .45; }
+.mrow .seed { font: 600 13px var(--f-data); color: var(--red); text-align: right; }
+.mrow .who2 { min-width: 0; display: grid; gap: 2px; }
+.mrow .who2 b { font: 600 17px/1.1 var(--f-display); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .who2 span { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .score { font: 700 18px var(--f-data); text-align: right; }
+.mrow.tbd .who2 b { color: var(--muted); font-style: italic; }
+.champ { border: 1px solid var(--red); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: center; background: rgba(255, 20, 24, .08); }
+.champ .thumb { width: 64px; height: 64px; }
+.champ small { font: italic 800 13px/1 var(--f-display); letter-spacing: .08em; color: var(--red); text-transform: uppercase; }
+.champ b { display: block; font: 700 22px/1.1 var(--f-display); }
+.champ span { font-size: 13px; color: var(--muted); }
+@media (max-width: 760px) { .bracket { grid-template-columns: minmax(0, 1fr); } }
+
 /* Share modal */
 .modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; z-index: 10; }
 .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; width: min(920px, 100%); max-height: calc(100% - 32px); overflow: auto; }
@@ -227,6 +250,16 @@ table.st tr.dropped td { opacity: .5; }
     </div>
   </section>
 
+  <section id="bracket-sec" hidden>
+    <div class="board">
+      <div class="bar-head">
+        <h3 id="bracket-title">Top 8</h3>
+        <button class="btn ghost" id="bracket-image" type="button">Make bracket image</button>
+      </div>
+      <div class="bracket" id="bracket"></div>
+    </div>
+  </section>
+
   <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted decklist aren’t counted in the breakdown. Share is each deck’s percentage of players with a decklist. If a file holds several rounds, the latest round is used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
 </div>
 
@@ -234,6 +267,10 @@ table.st tr.dropped td { opacity: .5; }
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="hdr"><h3 id="modal-title">Share image</h3><button type="button" class="x" id="modal-close" aria-label="Close">×</button></div>
     <div class="actions">
+      <div class="seg" role="group" aria-label="Image" id="kindseg" hidden>
+        <button type="button" id="kind-decks" aria-pressed="true">Deck breakdown</button>
+        <button type="button" id="kind-bracket" aria-pressed="false">Top 8 bracket</button>
+      </div>
       <div class="seg" role="group" aria-label="Size" id="fmtseg">
         <button type="button" id="fmt-wide" aria-pressed="true">16:9</button>
         <button type="button" id="fmt-tall" aria-pressed="false">4:5 Facebook</button>
@@ -257,7 +294,7 @@ table.st tr.dropped td { opacity: .5; }
 <script>
 const SAMPLE_CSV = "Rank,TeamPlayers1DisplayName,Decklists1DecklistName,MatchRecord,GameRecord,TeamStatusDescription,MatchingMethodDescription,RoundNumber,TournamentId\n1,Player 6,\"Yoda, Sensing Darkness - Strangled Cliffs\",7-0-2,15-5-3,Active,Playoffs/Top Cut,9,sample\n2,Player 20,\"Han Solo, Worth the Risk - Shadowed Undercity\",6-2-1,14-8-3,Eliminated,Playoffs/Top Cut,9,sample\n3,Player 15,\"Iden Versio, Inferno Squad Commander - Data Vault\",5-1-2,11-5-6,Eliminated,Playoffs/Top Cut,9,sample\n4,Player 9,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",5-1-2,11-2-6,Eliminated,Playoffs/Top Cut,9,sample\n5,Player 33,\"Yoda, Sensing Darkness - Fortress Vader\",4-2-1,10-7-0,Eliminated,Playoffs/Top Cut,9,sample\n6,Player 37,\"Han Solo, Worth the Risk - Shadowed Undercity\",4-2-1,10-7-3,Eliminated,Playoffs/Top Cut,9,sample\n7,Player 28,\"Boba Fett, Any Methods Necessary - Theed Palace\",4-2-1,9-6-3,Eliminated,Playoffs/Top Cut,9,sample\n8,Player 13,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-3-0,11-7-0,Eliminated,Playoffs/Top Cut,9,sample\n9,Player 27,\"Han Solo, Never Tell Me the Odds - Tarkintown\",4-2-0,9-6-0,Cut,Playoffs/Top Cut,9,sample\n10,Player 31,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",4-2-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n11,Player 1,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-2-0,8-5-0,Cut,Playoffs/Top Cut,9,sample\n12,Player 36,\"Emperor Palpatine, Galactic Ruler - Colossus\",3-2-1,7-6-0,Cut,Playoffs/Top Cut,9,sample\n13,Player 30,\"Admiral Piett, Commanding the Armada - Nadiri Dockyards\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n14,Player 11,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n15,Player 16,\"Luke Skywalker, Hero of Yavin - Data Vault\",3-3-0,7-7-0,Cut,Playoffs/Top Cut,9,sample\n16,Player 34,\"Darth Maul, Sith Revealed - Vergence Temple\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n17,Player 35,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n18,Player 23,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",2-2-0,5-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n19,Player 18,\"Anakin Skywalker, What it Takes to Win - Shadowed Undercity\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n20,Player 22,\"Quinlan Vos, Sticking the Landing - Tarkintown\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n21,Player 8,\"Captain Phasma, Chrome Dome - Energy Conversion Lab\",2-4-0,4-9-0,Cut,Playoffs/Top Cut,9,sample\n22,Player 25,\"Han Solo, Worth the Risk - Shadowed Undercity\",2-2-0,5-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n23,Player 24,\"Yoda, Sensing Darkness - Fortress Vader\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n24,Player 14,\"Boba Fett, Any Methods Necessary - Data Vault\",2-3-0,6-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n25,Player 3,\"Boba Fett, Any Methods Necessary - Data Vault\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n26,Player 29,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",2-4-0,7-8-0,Cut,Playoffs/Top Cut,9,sample\n27,Player 32,\"Captain Phasma, Chrome Dome - Data Vault\",1-1-1,3-4-0,Dropped (Staff),Playoffs/Top Cut,9,sample\n28,Player 17,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",1-1-1,2-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n29,Player 2,\"Avar Kriss, Marshal of Starlight - Nightsister Lair\",1-1-1,4-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n30,Player 19,\"Mace Windu, Vaapad Form Master - Shadowed Undercity\",1-2-0,2-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n31,Player 12,\"Quinlan Vos, Sticking the Landing - Tarkintown\",1-2-0,3-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n32,Player 7,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",1-3-0,4-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n33,Player 5,\"Rey, Nobody - Nightsister Lair\",1-3-0,2-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n34,Player 4,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",1-2-0,2-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n35,Player 26,\"Grand Admiral Thrawn, ...How Unfortunate - Data Vault\",0-3-0,3-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n36,Player 10,[[[Decklist]]],0-3-0,0-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n37,Player 21,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",0-3-0,0-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n";
 const CARDS = window.SWU_CARDS || { leaders: {}, bases: {} };
-const state = { rounds: new Map(), tid: null, gen: true, sample: false, chart: 'treemap', format: 'wide', liveId: null, live: null };
+const state = { rounds: new Map(), tid: null, gen: true, sample: false, chart: 'treemap', format: 'wide', liveId: null, live: null, kind: 'decks' };
 
 // melee.gg doesn't let other sites read its data from the browser, so live standings come through a small relay (see worker/).
 const RELAY = location.hostname === 'localhost' ? 'http://localhost:8787' : 'https://bdst-melee-relay.bdst.workers.dev';
@@ -473,6 +510,7 @@ function render() {
   document.getElementById('decks').innerHTML = `<h3>Decks<small>${decks.length} different · tap a row to see who played it</small></h3>
     <div class="cols"><span>#</span><span>Leader + base</span><span>Players</span><span>Share</span></div>${rows}`;
   renderStandings(ps, decks);
+  renderBracket();
 }
 
 function renderStandings(ps, decks) {
@@ -578,6 +616,80 @@ async function handleFiles(list) {
   } catch (e) { setNotice(esc(e.message || 'Could not read that file.'), true); }
 }
 
+// ---------- top cut bracket ----------
+// melee.gg seeds a top 8 as 1v8, 4v5, 2v7, 3v6 (tables 1-4); semifinal 1 is the winners of tables 1 and 2,
+// semifinal 2 the winners of tables 3 and 4. Before the cut is paired, the bracket is projected from the standings.
+const SEED_ORDER = { 8: [[1, 8], [4, 5], [2, 7], [3, 6]], 4: [[1, 4], [2, 3]], 2: [[1, 2]] };
+const DEFAULT_ROUNDS = { 8: ['Quarterfinals', 'Semifinals', 'Finals'], 4: ['Semifinals', 'Finals'], 2: ['Finals'] };
+
+function buildBracket(seedsList, prounds, swissDone, swissName) {
+  const k = Math.max(1, Math.min(3, prounds.length || 3)), size = 2 ** k;
+  const rounds = prounds.length ? prounds.slice(-k) : DEFAULT_ROUNDS[size].map(name => ({ name, matches: [] }));
+  if (seedsList.length < size) return null;
+  const seedOf = new Map(seedsList.map(p => [String(p.playerId), p.rank]));
+  const bySeed = new Map(seedsList.map(p => [p.rank, p]));
+  const entrant = (id, name, gameWins = null) => ({ id: String(id), name, seed: seedOf.get(String(id)) ?? null, gameWins });
+  const fromMatch = m => {
+    const players = m.players.map(p => entrant(p.playerId, p.name, p.gameWins)).sort((a, b) => (a.seed ?? 99) - (b.seed ?? 99));
+    const [a, b] = players;
+    const winner = m.hasResult && a && b && a.gameWins !== b.gameWins ? (a.gameWins > b.gameWins ? a : b) : null;
+    return { players: [a || null, b || null], winner, played: true };
+  };
+  const out = [];
+  const first = rounds[0];
+  let slots = SEED_ORDER[size].map(pair => {
+    const m = first.matches.find(m => m.players.some(p => pair.includes(seedOf.get(String(p.playerId)))));
+    if (m) return fromMatch(m);
+    return { players: pair.map(s => bySeed.get(s)).map(p => p ? entrant(p.playerId, p.name) : null), winner: null, played: false };
+  });
+  out.push({ name: first.name, slots });
+  for (let j = 1; j < rounds.length; j++) {
+    const prev = out[j - 1].slots, cur = [];
+    for (let i = 0; i < prev.length / 2; i++) {
+      const a = prev[2 * i], b = prev[2 * i + 1];
+      const ids = [a, b].flatMap(s => s.players.filter(Boolean).map(p => p.id));
+      const m = rounds[j].matches.find(m => m.players.some(p => ids.includes(String(p.playerId))));
+      cur.push(m ? fromMatch(m) : { players: [a.winner, b.winner].map(w => w ? { ...w, gameWins: null } : null), winner: null, played: false });
+    }
+    out.push({ name: rounds[j].name, slots: cur });
+  }
+  const champion = out[out.length - 1].slots[0].winner;
+  const projected = !first.matches.length;
+  const note = projected ? (swissDone ? `Seeded from the final Swiss standings` : `Projected from the standings after ${swissName}`) : '';
+  return { size, rounds: out, champion, projected, note };
+}
+
+// The deck a bracket entrant is playing, labelled like the deck breakdown ("Yoda Red Force").
+function entrantDeck(e) {
+  if (!e) return null;
+  const idx = deckIndex();
+  const d = idx && (idx.byId.get(e.id) || idx.byName.get(e.name.toLowerCase()));
+  if (!d || !d.known) return null;
+  const base = baseKey(d);
+  return { leader: d.leader, base, label: deckName(splitLeader(d.leader).name, base) };
+}
+
+function renderBracket() {
+  const sec = document.getElementById('bracket-sec'), br = state.live?.bracket;
+  sec.hidden = !br;
+  document.getElementById('kindseg').hidden = !br;
+  if (!br) return;
+  document.getElementById('bracket-title').innerHTML = `Top ${br.size}${br.note ? `<small style="margin-left:10px">${esc(br.note)}</small>` : ''}`;
+  const row = (e, m) => {
+    if (!e) return `<div class="mrow tbd"><span class="seed"></span><span class="thumb" aria-hidden="true"></span><div class="who2"><b>To be decided</b></div><span class="score"></span></div>`;
+    const d = entrantDeck(e);
+    const cls = m.winner ? (m.winner.id === e.id ? 'win' : 'lose') : '';
+    return `<div class="mrow ${cls}"><span class="seed">${e.seed ?? ''}</span>${d ? leaderImg(d.leader) : '<span class="thumb" aria-hidden="true"></span>'}
+      <div class="who2"><b>${esc(e.name)}</b><span>${d ? esc(d.label) : 'No decklist'}</span></div>
+      <span class="score">${e.gameWins ?? ''}</span></div>`;
+  };
+  const cols = br.rounds.map((r, j) => `<div class="bcol"><h4>${esc(r.name)}</h4><div class="bstack">${r.slots.map(m => `<div class="match">${row(m.players[0], m)}${row(m.players[1], m)}</div>`).join('')}
+    ${j === br.rounds.length - 1 && br.champion ? (() => { const d = entrantDeck(br.champion); return `<div class="champ">${d ? leaderImg(d.leader) : '<span class="thumb"></span>'}<div><small>Champion</small><b>${esc(br.champion.name)}</b><span>${d ? esc(d.label) : ''}</span></div></div>`; })() : ''}</div></div>`).join('');
+  const el = document.getElementById('bracket');
+  el.style.setProperty('--cols', br.rounds.length);
+  el.innerHTML = cols;
+}
+
 // ---------- live following ----------
 async function relay(path) {
   let res;
@@ -630,6 +742,16 @@ async function refreshLive() {
     const current = t.rounds.find(r => r.started && !r.completed);
     const players = last ? (await relay('/standings/' + last.id)).players : [];
     state.live = { id: String(tid), name: t.name, round: last?.name || null, current: current?.name || null, players, updated: new Date() };
+    // Top cut: seeds come from the last completed Swiss round; playoff rounds are everything after the Swiss rounds.
+    const isSwiss = r => /^round\s*\d+$/i.test(r.name);
+    const swiss = t.rounds.filter(isSwiss), playoff = t.rounds.filter(r => !isSwiss(r));
+    const lastSwiss = [...swiss].reverse().find(r => r.completed);
+    if (lastSwiss) {
+      const seeds = lastSwiss.id === last?.id ? players : (await relay('/standings/' + lastSwiss.id)).players;
+      const proundsData = [];
+      for (const r of playoff) proundsData.push({ name: r.name, matches: r.started ? (await relay('/matches/' + r.id)).matches : [] });
+      state.live.bracket = buildBracket(seeds, proundsData, swiss.every(r => r.completed), lastSwiss.name);
+    }
     // Use decklists uploaded earlier for this tournament if the current file is for a different one.
     if (String(finalRound().tid) !== String(tid) || state.sample) restoreDecks(tid);
     const ev = document.getElementById('evname');
@@ -898,7 +1020,119 @@ async function drawBackground(ctx, W, H, groups, art) {
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#b3070d'; ctx.fillRect(art.x, art.y, art.w, art.h); ctx.restore();
 }
 
+// Top 8 bracket image (1920 × 1080): quarterfinals on the left, final and champion on the right.
+async function makeBracketImage() {
+  const br = state.live?.bracket; if (!br) return null;
+  const { D, B, M } = FONTS, W = 1920, H = 1080;
+  await Promise.all(['italic 800 80px "Barlow Condensed"', '700 40px "Barlow Condensed"', '600 22px Barlow', '700 22px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  genericInfo.clear();
+  const focus = br.champion || br.rounds[0].slots[0].players[0];
+  const fd = entrantDeck(focus);
+  ctx.fillStyle = '#100506'; ctx.fillRect(0, 0, W, H);
+  const bg = fd ? await leaderArt(fd.leader) : null;
+  if (bg) { ctx.save(); ctx.globalAlpha = .9; ctx.drawImage(blurred(bg, W, H), 0, 0, W, H); ctx.restore(); }
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#b3070d'; ctx.fillRect(0, 0, W, H); ctx.restore();
+  ctx.fillStyle = 'rgba(16,4,6,.78)'; ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = 'alphabetic';
+
+  const logo = await loadImg('bdst-logo.png');
+  const ev = document.getElementById('evname').value.trim();
+  drawTitleBox(ctx, { X0: 40, X1: W - 40, Y: 40, H: 140, LW: 220, big: 72, small: 21 }, logo, (ev || 'Top 8').toUpperCase(),
+    `STAR WARS: UNLIMITED  ·  TOP ${br.size}${br.note ? '  ·  ' + br.note.toUpperCase() : ''}`);
+
+  const nR = br.rounds.length, CW = 500, CH = 150, Y0 = 262, Y1 = 1036;
+  const colX = j => 40 + j * ((W - 80 - CW) / Math.max(1, nR - 1 + (br.champion ? .0 : 0)));
+  const centers = br.rounds.map((r, j) => r.slots.map((_, i) => { const slot = (Y1 - Y0) / r.slots.length; return Y0 + slot * (i + .5); }));
+
+  // Round labels
+  ctx.font = `italic 800 28px ${D}`; ctx.fillStyle = C.red; ctx.textAlign = 'left';
+  br.rounds.forEach((r, j) => ctx.fillText(r.name.toUpperCase(), colX(j), 236));
+
+  // Connectors: white, with the winner's path in red
+  for (let j = 1; j < nR; j++) {
+    const x0 = colX(j - 1) + CW, x2 = colX(j), xm = (x0 + x2) / 2;
+    br.rounds[j].slots.forEach((_, i) => {
+      const ya = centers[j - 1][2 * i], yb = centers[j - 1][2 * i + 1], yc = centers[j][i];
+      for (const [y, s] of [[ya, br.rounds[j - 1].slots[2 * i]], [yb, br.rounds[j - 1].slots[2 * i + 1]]]) {
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(xm, y); ctx.lineTo(xm, yc); ctx.lineTo(x2, yc);
+        ctx.strokeStyle = s.winner ? C.red : 'rgba(255,255,255,.28)'; ctx.lineWidth = s.winner ? 4 : 3; ctx.stroke();
+      }
+    });
+  }
+
+  // Match cards
+  const drawRow = async (e, m, x, y, h) => {
+    const lose = m.winner && e && m.winner.id !== e.id, win = m.winner && e && m.winner.id === e.id;
+    ctx.save(); if (lose) ctx.globalAlpha = .42;
+    if (win) { ctx.fillStyle = C.red; ctx.fillRect(x, y, 6, h); }
+    if (!e) {
+      ctx.font = `italic 700 26px ${D}`; ctx.fillStyle = C.soft; ctx.textAlign = 'left'; ctx.fillText('TO BE DECIDED', x + 132, y + h / 2 + 9);
+      ctx.restore(); return;
+    }
+    const d = entrantDeck(e);
+    ctx.font = `700 22px ${M}`; ctx.fillStyle = C.red; ctx.textAlign = 'right'; ctx.fillText(e.seed ?? '', x + 48, y + h / 2 + 8);
+    const ax = x + 60, ay = y + 7, as = h - 14;
+    if (d) {
+      const im = await leaderArt(d.leader);
+      ctx.save(); rr(ctx, ax, ay, as, as, 8); ctx.clip();
+      if (im) drawCover(ctx, im, ax, ay, as, as - 10, .2);
+      const gi = genericInfo.get(d.base);
+      if (gi) { ctx.fillStyle = C.asp[gi.aspect]; ctx.fillRect(ax, ay + as - 10, as, 10); }
+      else { const bi = await baseArt(d.base); if (bi) drawCover(ctx, bi, ax, ay + as - 10, as, 10, .5); else { ctx.fillStyle = '#2a0a0c'; ctx.fillRect(ax, ay + as - 10, as, 10); } }
+      ctx.restore();
+    } else { ctx.fillStyle = 'rgba(255,255,255,.08)'; rr(ctx, ax, ay, as, as, 8); ctx.fill(); }
+    const tx = ax + as + 16, tw = CW - (tx - x) - 64;
+    ctx.textAlign = 'left'; ctx.fillStyle = C.white;
+    let fs = 28; ctx.font = `italic 800 ${fs}px ${D}`;
+    const nm = e.name.toUpperCase();
+    while (fs > 18 && ctx.measureText(nm).width > tw) { fs--; ctx.font = `italic 800 ${fs}px ${D}`; }
+    ctx.fillText(fit(ctx, nm, tw), tx, y + h / 2 - 2);
+    ctx.font = `500 18px ${B}`; ctx.fillStyle = C.soft;
+    ctx.fillText(fit(ctx, d ? d.label : 'No decklist', tw), tx, y + h / 2 + 24);
+    if (e.gameWins != null) { ctx.font = `700 36px ${M}`; ctx.fillStyle = C.white; ctx.textAlign = 'right'; ctx.fillText(String(e.gameWins), x + CW - 22, y + h / 2 + 13); }
+    ctx.restore();
+  };
+  for (let j = 0; j < nR; j++) {
+    for (let i = 0; i < br.rounds[j].slots.length; i++) {
+      const m = br.rounds[j].slots[i], x = colX(j), y = centers[j][i] - CH / 2, rh = (CH - 2) / 2;
+      ctx.fillStyle = 'rgba(12,3,5,.92)'; rr(ctx, x, y, CW, CH, 10); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.save(); rr(ctx, x, y, CW, CH, 10); ctx.clip();
+      await drawRow(m.players[0], m, x, y, rh);
+      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(x, y + rh, CW, 2);
+      await drawRow(m.players[1], m, x, y + rh + 2, rh);
+      ctx.restore();
+    }
+  }
+
+  // Champion, above the final
+  if (br.champion) {
+    const d = entrantDeck(br.champion), x = colX(nR - 1), top = 292;
+    ctx.font = `italic 800 34px ${D}`; ctx.fillStyle = C.red; ctx.textAlign = 'left'; ctx.fillText('CHAMPION', x, top);
+    const as = 170, ay = top + 18;
+    if (d) {
+      const im = await leaderArt(d.leader);
+      ctx.save(); rr(ctx, x, ay, as, as, 12); ctx.clip(); if (im) drawCover(ctx, im, x, ay, as, as, .2); ctx.restore();
+      ctx.strokeStyle = C.red; ctx.lineWidth = 4; rr(ctx, x, ay, as, as, 12); ctx.stroke();
+    }
+    const tx = x + (d ? as + 22 : 0), tw = CW - (tx - x);
+    let fs = 54; ctx.font = `italic 800 ${fs}px ${D}`;
+    const nm = br.champion.name.toUpperCase();
+    while (fs > 30 && ctx.measureText(nm).width > tw) { fs -= 2; ctx.font = `italic 800 ${fs}px ${D}`; }
+    ctx.fillStyle = C.white; ctx.fillText(fit(ctx, nm, tw), tx, ay + 76);
+    ctx.font = `600 24px ${B}`; ctx.fillStyle = C.soft; ctx.fillText(fit(ctx, d ? d.label : '', tw), tx, ay + 116);
+  }
+
+  ctx.textAlign = 'right'; ctx.font = `500 15px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText('Data: melee.gg  ·  Card art © Lucasfilm Ltd. & FFG via swu-db.com', W - 40, H - 16);
+  ctx.textAlign = 'left';
+  return cv;
+}
+
 async function makeImage() {
+  if (state.kind === 'bracket') return makeBracketImage();
   const ps = currentPlayers(); if (!ps.length) return null;
   await Promise.all(['italic 800 80px "Barlow Condensed"', '700 40px "Barlow Condensed"', '600 22px Barlow', '700 22px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
   const known = ps.filter(p => p.known), total = ps.length, n = known.length || 1;
@@ -1042,6 +1276,10 @@ let lastBlob = null, downloads = null;
 // Inside the claude.ai viewer, files are saved through the downloads capability; opened directly, a plain link works.
 window.claude?.use?.('downloads').then(d => { downloads = d; }).catch(() => {});
 function shareHint() {
+  const bracket = state.kind === 'bracket';
+  document.getElementById('fmtseg').hidden = bracket;
+  document.getElementById('chartseg').hidden = bracket;
+  if (bracket) { document.getElementById('share-msg').textContent = '1920 × 1080 (16:9). Right-click the image (or press and hold on a phone) to save it.'; return; }
   document.getElementById('share-msg').textContent = (state.format === 'tall'
     ? '1080 × 1350 (4:5), sized for Facebook and Instagram feeds.'
     : '1920 × 1080 (16:9), sized for Discord and YouTube.') + ' Right-click the image (or press and hold on a phone) to save it.';
@@ -1075,7 +1313,10 @@ function setPressed(groupId, id) {
 for (const [id, v] of [['gen-on', true], ['gen-off', false]])
   document.getElementById(id).addEventListener('click', () => { state.gen = v; setPressed('genseg', id); render(); });
 document.getElementById('evname').addEventListener('input', e => { if (!state.sample && state.tid) store(false, 'swu-ev-' + state.tid, e.target.value); });
-document.getElementById('share').addEventListener('click', openShare);
+document.getElementById('share').addEventListener('click', () => { if (!state.live?.bracket) state.kind = 'decks'; setPressed('kindseg', 'kind-' + state.kind); openShare(); });
+document.getElementById('bracket-image').addEventListener('click', () => { state.kind = 'bracket'; setPressed('kindseg', 'kind-bracket'); openShare(); });
+for (const [id, v] of [['kind-decks', 'decks'], ['kind-bracket', 'bracket']])
+  document.getElementById(id).addEventListener('click', () => { state.kind = v; setPressed('kindseg', id); shareHint(); refreshShot(); });
 for (const [id, v] of [['chart-treemap', 'treemap'], ['chart-ring', 'ring']])
   document.getElementById(id).addEventListener('click', () => { state.chart = v; setPressed('chartseg', id); refreshShot(); });
 for (const [id, v] of [['fmt-wide', 'wide'], ['fmt-tall', 'tall']])
