@@ -442,7 +442,7 @@ const pick = (o, ...keys) => { for (const k of keys) if (o[k] != null && o[k] !=
 function buildRound(objs) {
   if (!objs.length || !('Decklists1DecklistName' in objs[0]) || !('Rank' in objs[0]))
     throw new Error('This file does not look like a melee.gg standings export. It needs Rank and Decklists1DecklistName columns.');
-  const ps = objs.map(o => ({
+  const all = objs.map(o => ({
     rank: parseInt(o.Rank, 10) || 9999,
     id: pick(o, 'TeamPlayers1ID', 'TeamId', 'TeamPlayers1DisplayName'),
     name: pick(o, 'TeamPlayers1DisplayName', 'TeamPlayers1Username', 'TeamName') || 'Player',
@@ -451,6 +451,9 @@ function buildRound(objs) {
     status: o.TeamStatusDescription || '',
     phase: [o.PhaseName, o.MatchingMethod, o.MatchingMethodDescription].join(' ')
   })).sort((a, b) => a.rank - b.rank);
+  // A player listed twice in one round is counted once, at their best rank.
+  const seen = new Set();
+  const ps = all.filter(p => !p.id || (!seen.has(p.id) && seen.add(p.id)));
   const playoff = ps.some(p => /playoff|top cut/i.test(p.phase)) && ps.some(p => /^(active|eliminated)$/i.test(p.status));
   ps.forEach((p, i) => { p.cut = playoff ? /^(active|eliminated)$/i.test(p.status) : (ps.length >= 16 && i < 8); });
   ps.playoff = playoff;
@@ -669,13 +672,24 @@ function store(get, k, v) {
 }
 
 function addRound(rows, isSample) {
-  const ps = buildRound(tableToObjects(rows));
-  const switching = state.sample !== !!isSample || (ps.tid && state.tid && ps.tid !== state.tid);
-  if (switching) state.rounds.clear();
-  state.sample = !!isSample;
-  state.tid = ps.tid || state.tid;
-  const r = ps.round ?? (Math.max(0, ...state.rounds.keys()) + 1);
-  state.rounds.set(r, ps);
+  // One export can hold several rounds (one row per player per round), so split it by round first.
+  const objs = tableToObjects(rows);
+  const byRound = new Map();
+  for (const o of objs) {
+    const k = parseInt(o.RoundNumber, 10) || 0;
+    if (!byRound.has(k)) byRound.set(k, []);
+    byRound.get(k).push(o);
+  }
+  let switching = false;
+  for (const [, part] of [...byRound].sort((a, b) => a[0] - b[0])) {
+    const ps = buildRound(part);
+    const fresh = state.sample !== !!isSample || (ps.tid && state.tid && ps.tid !== state.tid);
+    if (fresh) { state.rounds.clear(); switching = true; }
+    state.sample = !!isSample;
+    state.tid = ps.tid || state.tid;
+    const r = ps.round ?? (Math.max(0, ...state.rounds.keys()) + 1);
+    state.rounds.set(r, ps);
+  }
   return switching;
 }
 
