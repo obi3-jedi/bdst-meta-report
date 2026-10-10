@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Upload melee.gg Star Wars: Unlimited standings to see leader and base usage, aspects, top cut, round-by-round results and a shareable image.">
+<meta name="description" content="Upload melee.gg Star Wars: Unlimited standings to see the deck breakdown (leader + base) and make a shareable graphic.">
 <link rel="icon" type="image/png" href="bdst-icon.png">
 <meta property="og:image" content="bdst-logo.png">
 <title>BDST Meta Report</title>
@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: BDST scoreboard — logo header, stat strip, ranked boards, aspects, top cut, rounds, pairings.
+/* Layout: BDST scoreboard — logo header, stat strip, one ranked deck board.
    Brand: the logo's black plate, white lettering and red edge; a single dark look by choice. */
 :root {
   --bg: #0a0a0b;
@@ -19,10 +19,8 @@
   --ink: #f7f7f7;
   --muted: #a3a3ab;
   --line: #2c2c31;
-  --gold: #ff1418;                       /* BDST red: top cut, highlights, actions */
-  --holo: #ffffff;
-  --holo-soft: rgba(255, 255, 255, .2);  /* rest of field */
-  --gold-soft: rgba(255, 20, 24, .16);
+  --red: #ff1418;                        /* BDST red: actions, bars, accents */
+  --focus: #ffffff;
   --scrim: rgba(0, 0, 0, .78);
   --vig: #4f8fe0; --com: #3fae5e; --agg: #e8603f; --cun: #e6b93a; --her: #ece8da; --vil: #000000; --pip-ring: rgba(255, 255, 255, .5);
   --f-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
@@ -32,43 +30,35 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
-body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
-.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: grid; gap: 32px; }
-h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
-.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: grid; gap: 28px; }
+h1, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
 .eyebrow { font: 600 12px/1 var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 section { display: grid; gap: 14px; min-width: 0; }
 button { font-family: var(--f-body); }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* Header + upload */
-.brand { display: flex; align-items: center; gap: 16px; }
-.brand .logo { width: clamp(140px, 30vw, 200px); height: auto; display: block; }
-.brand .eyebrow { line-height: 1.5; border-left: 2px solid var(--gold); padding-left: 14px; }
-.controls { display: flex; flex-wrap: wrap; gap: 8px; }
-.boards.single { grid-template-columns: minmax(0, 1fr); }
-.pair { display: flex; gap: 6px; align-items: center; flex: none; }
-.bthumb.gen { display: grid; place-items: center; font: italic 800 12px/1 var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: #fff; }
-.bthumb.gen.a-cunning, .bthumb.gen.a-heroism { color: #141414; }
 header { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: end; justify-content: space-between; }
 header .titles { display: grid; gap: 8px; min-width: 0; flex: 1 1 320px; }
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand .logo { width: clamp(140px, 30vw, 200px); height: auto; display: block; }
+.brand .eyebrow { line-height: 1.5; border-left: 2px solid var(--red); padding-left: 14px; }
 h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 800; font-style: italic; line-height: .95; letter-spacing: .01em; text-transform: uppercase; }
-h1 span { color: var(--gold); }
 .evname { font: 600 22px/1.2 var(--f-display); letter-spacing: .02em; color: var(--ink); background: transparent; border: 0; border-bottom: 1.5px dashed var(--line); padding: 2px 0; width: min(100%, 26rem); }
 .evname::placeholder { color: var(--muted); }
-.evname:hover { border-bottom-color: var(--holo); }
+.evname:hover { border-bottom-color: var(--ink); }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
 .drop { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1.5px dashed var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; transition: border-color .15s; max-width: 100%; }
-.drop:hover, .drop:focus-within, .drop.over { border-color: var(--holo); }
-.drop:focus-within { outline: 2px solid var(--holo); outline-offset: 2px; }
+.drop:hover, .drop:focus-within, .drop.over { border-color: var(--ink); }
+.drop:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
 .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .drop strong { font-family: var(--f-display); font-size: 18px; letter-spacing: .03em; text-transform: uppercase; }
 .drop small { display: block; color: var(--muted); font-size: 13px; }
-.icon { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: var(--holo-soft); color: var(--holo); flex: none; }
-.btn { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--gold); color: #fff; font: italic 800 17px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
+.icon { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: rgba(255, 255, 255, .1); color: var(--ink); flex: none; }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--red); color: #fff; font: italic 800 17px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
 .btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
 .btn:hover { filter: brightness(1.08); }
 .notice { font-size: 13px; color: var(--muted); }
@@ -79,149 +69,66 @@ h1 span { color: var(--gold); }
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-block: 1px solid var(--line); }
 .stat { padding: 16px 18px; display: grid; gap: 6px; align-content: start; min-width: 0; }
 .stat + .stat { border-left: 1px solid var(--line); }
-.stat .v { font: 700 34px/1 var(--f-display); }
+.stat .v { font: 700 34px/1 var(--f-display); font-variant-numeric: tabular-nums; }
 .stat .v.sm { font-size: 24px; line-height: 1.05; }
 .stat .s { color: var(--muted); font-size: 13px; }
-.stat .hd { display: flex; gap: 12px; align-items: center; min-width: 0; }
-.stat .hd > div { display: grid; gap: 4px; min-width: 0; }
-.champ .v { color: var(--gold); }
 @media (max-width: 760px) {
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat:nth-child(3) { border-left: 0; }
   .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
 }
-@media (max-width: 420px) {
-  .stats { grid-template-columns: minmax(0, 1fr); }
-  .stat + .stat { border-left: 0; border-top: 1px solid var(--line); }
-}
 
 /* Art + aspect pips */
 .thumb { width: 42px; height: 42px; border-radius: 7px; object-fit: cover; flex: none; background: var(--line); display: grid; place-items: center; font: 700 15px var(--f-display); color: var(--muted); }
-.thumb.lg { width: 64px; height: 64px; border-radius: 9px; }
 .bthumb { width: 70px; height: 27px; border-radius: 5px; object-fit: cover; flex: none; background: var(--line); }
+.bthumb.gen { display: grid; place-items: center; font: italic 800 12px/1 var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: #fff; }
+.bthumb.gen.a-cunning { color: #141414; }
+.pair { display: flex; gap: 6px; align-items: center; flex: none; }
 .pips { display: inline-flex; gap: 3px; flex: none; }
 .pip { width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--pip-ring); display: inline-block; }
-.pip.lg { width: 18px; height: 18px; }
 .a-vigilance { background: var(--vig); } .a-command { background: var(--com); } .a-aggression { background: var(--agg); }
 .a-cunning { background: var(--cun); } .a-heroism { background: var(--her); } .a-villainy { background: var(--vil); }
 
 /* Controls */
-.bar-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
-.bar-head h2 { font-size: 28px; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: .02em; }
-.bar-head p { margin: 0; color: var(--muted); font-size: 14px; max-width: 60ch; }
+.bar-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
 .seg button { font: 600 13px/1 var(--f-body); color: var(--muted); background: none; border: 0; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
-.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
-.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+.hint { margin: 0; color: var(--muted); font-size: 13px; max-width: 60ch; }
 
-/* Boards */
-.boards { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: start; }
-@media (max-width: 900px) { .boards { grid-template-columns: minmax(0, 1fr); } }
+/* Deck board */
 .board { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 8px; display: grid; gap: 4px; min-width: 0; }
-.board h3 { font-size: 22px; text-transform: uppercase; letter-spacing: .03em; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.board h3 small { font: 500 13px var(--f-body); color: var(--muted); text-transform: none; letter-spacing: 0; }
-.cols { display: grid; grid-template-columns: minmax(0, 1fr) 4.2rem 3.6rem; gap: 12px; padding: 10px 0 6px; border-bottom: 1px solid var(--line); }
+.board h3 { font-size: 24px; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.board h3 small { font: 500 13px var(--f-body); font-style: normal; color: var(--muted); text-transform: none; letter-spacing: 0; }
+.cols, details.row summary { display: grid; grid-template-columns: 2rem minmax(0, 1fr) 4.4rem 4rem; gap: 12px; align-items: center; }
+.cols { padding: 10px 0 6px; border-bottom: 1px solid var(--line); }
 .cols span { font: 600 11px/1 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: right; }
-.cols span:first-child { text-align: left; }
-
+.cols span:nth-child(2) { text-align: left; }
 details.row { border-bottom: 1px solid var(--line); }
 details.row:last-child { border-bottom: 0; }
-details.row summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) 4.2rem 3.6rem; gap: 6px 12px; align-items: center; padding: 10px 0; }
+details.row summary { list-style: none; cursor: pointer; padding: 10px 0; }
 details.row summary::-webkit-details-marker { display: none; }
-details.row summary:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; border-radius: 4px; }
+details.row summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+.no { font: 600 14px/1 var(--f-data); color: var(--red); text-align: right; }
 .who { min-width: 0; display: flex; gap: 12px; align-items: center; }
 .who .info { min-width: 0; flex: 1; display: grid; gap: 6px; }
 .who .nm { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
-.who .nm b { font: 600 18px/1.1 var(--f-display); letter-spacing: .02em; min-width: 0; }
+.who .nm b { font: 600 19px/1.1 var(--f-display); letter-spacing: .02em; min-width: 0; }
 .who .nm em { font-style: normal; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 6rem; }
-.track { position: relative; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--line) 55%, transparent); overflow: hidden; display: flex; }
-.track .cut { background: var(--gold); height: 100%; }
-.track .rest { background: var(--holo-soft); height: 100%; }
-.track .cut + .rest { border-left: 1px solid var(--surface); }
-.cnt { text-align: right; display: grid; gap: 2px; }
-.cnt b { font: 600 17px/1 var(--f-data); }
-.cnt small { font: 400 12px/1 var(--f-data); color: var(--muted); }
-.wr { text-align: right; font: 600 14px/1 var(--f-data); }
-.wr.hi { color: var(--gold); }
-.wr.na { color: var(--muted); font-weight: 400; }
-.chip { font: 600 11px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; background: var(--gold-soft); color: var(--gold); white-space: nowrap; flex: none; }
-.chip.cutc { background: var(--holo-soft); color: var(--holo); }
-
-.pilots { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 13px; }
-.pilots li { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; gap: 10px; padding: 5px 8px; border-radius: 6px; }
-.pilots li:nth-child(odd) { background: color-mix(in srgb, var(--line) 35%, transparent); }
-.pilots li span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pilots .rk { color: var(--muted); }
-.pilots .rk.in { color: var(--gold); font-weight: 600; }
+.track { height: 10px; border-radius: 3px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.track div { height: 100%; background: var(--red); border-radius: 3px; }
+.num { text-align: right; font: 600 17px/1 var(--f-data); font-variant-numeric: tabular-nums; }
+.num.share { font-weight: 400; font-size: 15px; color: var(--muted); }
+.pilots { margin: 0 0 12px; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 2px 12px; font-size: 13px; }
+.pilots li { padding: 5px 8px; border-radius: 6px; background: rgba(255, 255, 255, .04); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pilots .muted { color: var(--muted); }
-
-/* Aspects */
-.split { display: grid; gap: 8px; }
-.split .bar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
-.split .bar div { display: flex; align-items: center; padding-inline: 10px; font: 700 14px/1 var(--f-display); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; min-width: 0; }
-.split .bar .her { background: var(--her); color: #2a2a2e; }
-.split .bar .vil { background: var(--vil); color: #f1efe6; justify-content: flex-end; }
-.split .bar .oth { background: var(--line); color: var(--muted); justify-content: center; }
-.asp-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
-@media (max-width: 900px) { .asp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 480px) { .asp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.asp { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px; min-width: 0; }
-.asp .t { display: flex; align-items: center; gap: 8px; font: 600 16px/1 var(--f-display); letter-spacing: .05em; text-transform: uppercase; }
-.asp .big { font: 700 32px/1 var(--f-display); }
-.asp .meter { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
-.asp .meter .track { height: 6px; }
-.asp .meter .row { display: flex; justify-content: space-between; }
-
-/* Pairings table */
-.tbl-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
-th { font: 600 11px/1 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: 10px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-tr:last-child td { border-bottom: 0; }
-td.r, th.r { text-align: right; }
-td.c, th.c { text-align: center; }
-td .cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
-td .ld { font: 600 16px/1.1 var(--f-display); letter-spacing: .02em; }
-td .sub { color: var(--muted); font-size: 12px; }
-.dots { display: inline-flex; gap: 3px; vertical-align: middle; flex-wrap: wrap; }
-.dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--holo-soft); }
-.dots i.in { background: var(--gold); }
-
-/* Rounds heat table */
-.heat td.h { text-align: center; font: 600 14px/1.1 var(--f-data); padding: 8px 6px; min-width: 64px; }
-.heat td.h small { display: block; font: 400 11px var(--f-body); color: var(--muted); margin-top: 2px; }
-.heat td.h.none { color: var(--muted); font-weight: 400; }
-.empty { background: var(--surface); border: 1.5px dashed var(--line); border-radius: 12px; padding: 22px; display: grid; gap: 8px; justify-items: start; }
-.empty h3 { font-size: 20px; text-transform: uppercase; letter-spacing: .03em; }
-.empty p { margin: 0; color: var(--muted); max-width: 62ch; }
-.rchips { display: flex; flex-wrap: wrap; gap: 6px; }
-.rchips span { font: 600 12px/1 var(--f-data); padding: 5px 8px; border-radius: 6px; background: var(--holo-soft); color: var(--holo); }
-
-/* Top cut */
-.cutlist { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-@media (max-width: 860px) { .cutlist { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 440px) { .cutlist { grid-template-columns: minmax(0, 1fr); } }
-.seat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: grid; min-width: 0; }
-.seat .art { position: relative; height: 92px; background: var(--line); }
-.seat .art .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
-.seat .art .lead { position: absolute; left: 12px; bottom: -22px; width: 64px; height: 64px; border-radius: 9px; object-fit: cover; border: 3px solid var(--surface); background: var(--line); }
-.seat .art .pos { position: absolute; right: 10px; top: 8px; font: 700 26px/1 var(--f-display); color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, .6); }
-.seat .body { padding: 28px 14px 14px; display: grid; gap: 3px; min-width: 0; }
-.seat.first { border-color: var(--gold); }
-.seat.first .art .pos { color: var(--gold); }
-.seat .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.seat .rec { font: 400 12px var(--f-data); color: var(--muted); }
-.seat .pl { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.seat .ld { font: 600 17px/1.1 var(--f-display); letter-spacing: .02em; }
-.seat .bs { font-size: 13px; color: var(--muted); }
 .foot { font-size: 12px; color: var(--muted); max-width: 75ch; margin: 0; }
 
 /* Share modal */
 .modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; z-index: 10; }
 .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; width: min(920px, 100%); max-height: calc(100% - 32px); overflow: auto; }
 .sheet .hdr { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.sheet h3 { font-size: 22px; text-transform: uppercase; letter-spacing: .03em; }
+.sheet h3 { font-size: 22px; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
 .sheet img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); display: block; }
 .sheet p { margin: 0; font-size: 13px; color: var(--muted); }
 .x { background: none; border: 0; color: var(--muted); font-size: 26px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
@@ -232,7 +139,7 @@ td .sub { color: var(--muted); font-size: 12px; }
   <header>
     <div class="titles">
       <div class="brand"><img class="logo" src="bdst-logo.png" alt="BDST" width="720" height="284"><span class="eyebrow">Star Wars: Unlimited<br>Meta report</span></div>
-      <h1>Leader <span>&amp;</span> Base<br>Breakdown</h1>
+      <h1>Deck Breakdown</h1>
       <input class="evname" id="evname" type="text" placeholder="Name this event" aria-label="Event name" maxlength="60">
       <div class="notice" id="notice"></div>
     </div>
@@ -240,7 +147,7 @@ td .sub { color: var(--muted); font-size: 12px; }
       <label class="drop" id="drop" for="file">
         <input type="file" id="file" multiple accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
         <span class="icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg></span>
-        <span><strong>Upload standings</strong><small>CSV or Excel · add one per round</small></span>
+        <span><strong>Upload standings</strong><small>melee.gg CSV or Excel export</small></span>
       </label>
       <button class="btn" id="share" type="button">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
@@ -253,87 +160,36 @@ td .sub { color: var(--muted); font-size: 12px; }
 
   <section>
     <div class="bar-head">
-      <div class="legend">
-        <span><i style="background:var(--gold)"></i>Made top cut</span>
-        <span><i style="background:var(--holo-soft)"></i>Rest of field</span>
-        <span>Win % = match wins ÷ matches played</span>
-      </div>
-      <div class="controls">
-      <div class="seg" role="group" aria-label="View" id="viewseg">
-        <button type="button" id="view-split" aria-pressed="true">Leaders &amp; bases</button>
-        <button type="button" id="view-decks" aria-pressed="false">Decks</button>
-      </div>
+      <p class="hint">Common bases go by colour: “Yoda Red” is Yoda on any plain 30 HP Aggression base, “Yoda Red Force” on any Aggression Force base. Named bases like Data Vault keep their names.</p>
       <div class="seg" role="group" aria-label="Common bases" id="genseg">
-        <button type="button" id="gen-on" aria-pressed="true" title="Name common bases by colour: Red, Red Force, Red Splash">Commons by colour</button>
+        <button type="button" id="gen-on" aria-pressed="true">Commons by colour</button>
         <button type="button" id="gen-off" aria-pressed="false">Bases by name</button>
       </div>
-      <div class="seg" role="group" aria-label="Sort boards" id="sortseg">
-        <button type="button" id="sort-count" aria-pressed="true">Most played</button>
-        <button type="button" id="sort-wr" aria-pressed="false">Best win %</button>
-        <button type="button" id="sort-cut" aria-pressed="false">Top cut</button>
-      </div>
-      </div>
     </div>
-    <div class="boards" id="boards">
-      <div class="board" id="leaders"></div>
-      <div class="board" id="bases"></div>
-    </div>
+    <div class="board" id="decks"></div>
   </section>
 
-  <section>
-    <div class="bar-head"><h2>Aspects</h2><p>A deck counts toward every aspect on its leader and base.</p></div>
-    <div class="split" id="split"></div>
-    <div class="asp-grid" id="aspects"></div>
-  </section>
-
-  <section id="cutsec">
-    <div class="bar-head"><h2>Top cut</h2></div>
-    <div class="cutlist" id="cutlist"></div>
-  </section>
-
-  <section>
-    <div class="bar-head"><h2>Round by round</h2><p>Cumulative match win % for each leader after every round, with how many of its players were still in.</p></div>
-    <div id="rounds"></div>
-  </section>
-
-  <section>
-    <div class="bar-head"><h2>Leader + base pairings</h2></div>
-    <div class="tbl-wrap"><table id="pairs"></table></div>
-  </section>
-
-  <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted list are grouped as Unknown. Common bases are interchangeable within a colour, so by default they go by colour: “Red” is any plain 30 HP Aggression base, “Red Force” any Aggression Force base (28 HP), and “Red Splash” any 27 HP Aggression base that ignores an aspect. A deck reads “Yoda Red Force”. Rare bases such as Data Vault keep their names. Top cut is read from playoff status (Active or Eliminated); without a playoff phase the top 8 by rank are used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
+  <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted decklist aren’t counted in the breakdown. Share is each deck’s percentage of players with a decklist. If a file holds several rounds, the latest round is used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
 </div>
 
 <div class="modal" id="modal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="hdr"><h3 id="modal-title">Share image</h3><button type="button" class="x" id="modal-close" aria-label="Close">×</button></div>
-    <div class="controls">
-      <div class="seg" role="group" aria-label="Image format" id="fmtseg">
-        <button type="button" id="fmt-wide" aria-pressed="true">Standings 16:9</button>
-        <button type="button" id="fmt-tall" aria-pressed="false">Summary 4:5</button>
-      </div>
-      <div class="seg" role="group" aria-label="Image layout" id="imgseg">
-        <button type="button" id="img-leaders" aria-pressed="true">Leaders</button>
-        <button type="button" id="img-bases" aria-pressed="false">Bases</button>
-        <button type="button" id="img-decks" aria-pressed="false">Decks</button>
-      </div>
-    </div>
-    <img id="shot" alt="BDST infographic of the tournament breakdown">
+    <img id="shot" alt="BDST deck breakdown graphic">
     <div class="actions">
       <button class="btn" id="copy" type="button">Copy image</button>
       <button class="btn ghost" id="dl" type="button" hidden>Download PNG</button>
     </div>
-    <p id="share-msg"></p>
+    <p id="share-msg">1920 × 1080, sized for Discord, YouTube and Facebook. Right-click the image (or press and hold on a phone) to save it.</p>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="cards.js"></script>
 <script>
-const SAMPLE_CSV = "Rank,TeamPlayers1DisplayName,Decklists1DecklistName,MatchRecord,GameRecord,TeamStatusDescription,MatchingMethodDescription,RoundNumber,TournamentId\n1,Player 1,\"Yoda, Sensing Darkness - Strangled Cliffs\",7-0-2,15-5-3,Active,Playoffs/Top Cut,9,sample\n2,Player 2,\"Han Solo, Worth the Risk - Shadowed Undercity\",6-2-1,14-8-3,Eliminated,Playoffs/Top Cut,9,sample\n3,Player 3,\"Iden Versio, Inferno Squad Commander - Data Vault\",5-1-2,11-5-6,Eliminated,Playoffs/Top Cut,9,sample\n4,Player 4,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",5-1-2,11-2-6,Eliminated,Playoffs/Top Cut,9,sample\n5,Player 5,\"Yoda, Sensing Darkness - Fortress Vader\",4-2-1,10-7-0,Eliminated,Playoffs/Top Cut,9,sample\n6,Player 6,\"Han Solo, Worth the Risk - Shadowed Undercity\",4-2-1,10-7-3,Eliminated,Playoffs/Top Cut,9,sample\n7,Player 7,\"Boba Fett, Any Methods Necessary - Theed Palace\",4-2-1,9-6-3,Eliminated,Playoffs/Top Cut,9,sample\n8,Player 8,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-3-0,11-7-0,Eliminated,Playoffs/Top Cut,9,sample\n9,Player 9,\"Han Solo, Never Tell Me the Odds - Tarkintown\",4-2-0,9-6-0,Cut,Playoffs/Top Cut,9,sample\n10,Player 10,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",4-2-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n11,Player 11,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-2-0,8-5-0,Cut,Playoffs/Top Cut,9,sample\n12,Player 12,\"Emperor Palpatine, Galactic Ruler - Colossus\",3-2-1,7-6-0,Cut,Playoffs/Top Cut,9,sample\n13,Player 13,\"Admiral Piett, Commanding the Armada - Nadiri Dockyards\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n14,Player 14,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n15,Player 15,\"Luke Skywalker, Hero of Yavin - Data Vault\",3-3-0,7-7-0,Cut,Playoffs/Top Cut,9,sample\n16,Player 16,\"Darth Maul, Sith Revealed - Vergence Temple\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n17,Player 17,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n18,Player 18,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",2-2-0,5-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n19,Player 19,\"Anakin Skywalker, What it Takes to Win - Shadowed Undercity\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n20,Player 20,\"Quinlan Vos, Sticking the Landing - Tarkintown\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n21,Player 21,\"Captain Phasma, Chrome Dome - Energy Conversion Lab\",2-4-0,4-9-0,Cut,Playoffs/Top Cut,9,sample\n22,Player 22,\"Han Solo, Worth the Risk - Shadowed Undercity\",2-2-0,5-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n23,Player 23,\"Yoda, Sensing Darkness - Fortress Vader\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n24,Player 24,\"Boba Fett, Any Methods Necessary - Data Vault\",2-3-0,6-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n25,Player 25,\"Boba Fett, Any Methods Necessary - Data Vault\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n26,Player 26,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",2-4-0,7-8-0,Cut,Playoffs/Top Cut,9,sample\n27,Player 27,\"Captain Phasma, Chrome Dome - Data Vault\",1-1-1,3-4-0,Dropped (Staff),Playoffs/Top Cut,9,sample\n28,Player 28,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",1-1-1,2-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n29,Player 29,\"Avar Kriss, Marshal of Starlight - Nightsister Lair\",1-1-1,4-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n30,Player 30,\"Mace Windu, Vaapad Form Master - Shadowed Undercity\",1-2-0,2-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n31,Player 31,\"Quinlan Vos, Sticking the Landing - Tarkintown\",1-2-0,3-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n32,Player 32,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",1-3-0,4-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n33,Player 33,\"Rey, Nobody - Nightsister Lair\",1-3-0,2-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n34,Player 34,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",1-2-0,2-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n35,Player 35,\"Grand Admiral Thrawn, ...How Unfortunate - Data Vault\",0-3-0,3-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n36,Player 36,[[[Decklist]]],0-3-0,0-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n37,Player 37,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",0-3-0,0-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n";
+const SAMPLE_CSV = "Rank,TeamPlayers1DisplayName,Decklists1DecklistName,MatchRecord,GameRecord,TeamStatusDescription,MatchingMethodDescription,RoundNumber,TournamentId\n1,Player 6,\"Yoda, Sensing Darkness - Strangled Cliffs\",7-0-2,15-5-3,Active,Playoffs/Top Cut,9,sample\n2,Player 20,\"Han Solo, Worth the Risk - Shadowed Undercity\",6-2-1,14-8-3,Eliminated,Playoffs/Top Cut,9,sample\n3,Player 15,\"Iden Versio, Inferno Squad Commander - Data Vault\",5-1-2,11-5-6,Eliminated,Playoffs/Top Cut,9,sample\n4,Player 9,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",5-1-2,11-2-6,Eliminated,Playoffs/Top Cut,9,sample\n5,Player 33,\"Yoda, Sensing Darkness - Fortress Vader\",4-2-1,10-7-0,Eliminated,Playoffs/Top Cut,9,sample\n6,Player 37,\"Han Solo, Worth the Risk - Shadowed Undercity\",4-2-1,10-7-3,Eliminated,Playoffs/Top Cut,9,sample\n7,Player 28,\"Boba Fett, Any Methods Necessary - Theed Palace\",4-2-1,9-6-3,Eliminated,Playoffs/Top Cut,9,sample\n8,Player 13,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-3-0,11-7-0,Eliminated,Playoffs/Top Cut,9,sample\n9,Player 27,\"Han Solo, Never Tell Me the Odds - Tarkintown\",4-2-0,9-6-0,Cut,Playoffs/Top Cut,9,sample\n10,Player 31,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",4-2-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n11,Player 1,\"Luke Skywalker, Hero of Yavin - Data Vault\",4-2-0,8-5-0,Cut,Playoffs/Top Cut,9,sample\n12,Player 36,\"Emperor Palpatine, Galactic Ruler - Colossus\",3-2-1,7-6-0,Cut,Playoffs/Top Cut,9,sample\n13,Player 30,\"Admiral Piett, Commanding the Armada - Nadiri Dockyards\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n14,Player 11,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,7-6-0,Cut,Playoffs/Top Cut,9,sample\n15,Player 16,\"Luke Skywalker, Hero of Yavin - Data Vault\",3-3-0,7-7-0,Cut,Playoffs/Top Cut,9,sample\n16,Player 34,\"Darth Maul, Sith Revealed - Vergence Temple\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n17,Player 35,\"Quinlan Vos, Sticking the Landing - Tarkintown\",3-3-0,8-7-0,Cut,Playoffs/Top Cut,9,sample\n18,Player 23,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",2-2-0,5-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n19,Player 18,\"Anakin Skywalker, What it Takes to Win - Shadowed Undercity\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n20,Player 22,\"Quinlan Vos, Sticking the Landing - Tarkintown\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n21,Player 8,\"Captain Phasma, Chrome Dome - Energy Conversion Lab\",2-4-0,4-9-0,Cut,Playoffs/Top Cut,9,sample\n22,Player 25,\"Han Solo, Worth the Risk - Shadowed Undercity\",2-2-0,5-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n23,Player 24,\"Yoda, Sensing Darkness - Fortress Vader\",2-4-0,5-9-0,Cut,Playoffs/Top Cut,9,sample\n24,Player 14,\"Boba Fett, Any Methods Necessary - Data Vault\",2-3-0,6-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n25,Player 3,\"Boba Fett, Any Methods Necessary - Data Vault\",2-4-0,6-9-0,Cut,Playoffs/Top Cut,9,sample\n26,Player 29,\"Cad Bane, He Who Needs No Introduction - Tarkintown\",2-4-0,7-8-0,Cut,Playoffs/Top Cut,9,sample\n27,Player 32,\"Captain Phasma, Chrome Dome - Data Vault\",1-1-1,3-4-0,Dropped (Staff),Playoffs/Top Cut,9,sample\n28,Player 17,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",1-1-1,2-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n29,Player 2,\"Avar Kriss, Marshal of Starlight - Nightsister Lair\",1-1-1,4-3-0,Dropped (Self),Playoffs/Top Cut,9,sample\n30,Player 19,\"Mace Windu, Vaapad Form Master - Shadowed Undercity\",1-2-0,2-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n31,Player 12,\"Quinlan Vos, Sticking the Landing - Tarkintown\",1-2-0,3-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n32,Player 7,\"Sabine Wren, Galvanized Revolutionary - Energy Conversion Lab\",1-3-0,4-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n33,Player 5,\"Rey, Nobody - Nightsister Lair\",1-3-0,2-7-0,Dropped (Self),Playoffs/Top Cut,9,sample\n34,Player 4,\"Admiral Piett, Commanding the Armada - Thermal Oscillator\",1-2-0,2-4-0,Dropped (Self),Playoffs/Top Cut,9,sample\n35,Player 26,\"Grand Admiral Thrawn, ...How Unfortunate - Data Vault\",0-3-0,3-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n36,Player 10,[[[Decklist]]],0-3-0,0-6-0,Dropped (Self),Playoffs/Top Cut,9,sample\n37,Player 21,\"Darth Vader, Victor Squadron Leader - Mos Eisley\",0-3-0,0-5-0,Dropped (Self),Playoffs/Top Cut,9,sample\n";
 const CARDS = window.SWU_CARDS || { leaders: {}, bases: {} };
-const ASPECTS = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy'];
-const state = { rounds: new Map(), tid: null, sort: 'count', view: 'split', gen: true, imgView: 'leaders', imgFormat: 'wide', sample: false, label: '' };
+const state = { rounds: new Map(), tid: null, gen: true, sample: false };
 
 // ---------- card lookup ----------
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -370,14 +226,15 @@ function card(kind, name) {
   cardCache.set(key, c);
   return c;
 }
-// Common bases with the same ability are interchangeable within a colour, so group them as e.g. "Red Force".
+
+// Common bases with the same ability are interchangeable within a colour.
+// Plain commons are just their colour ("Red"); commons with a shared ability add it ("Red Force", "Red Splash").
 const COLOR = { Vigilance: 'Blue', Command: 'Green', Aggression: 'Red', Cunning: 'Yellow' };
 const genericInfo = new Map();
 function baseKey(p) {
   if (!state.gen) return p.base;
   const c = card('bases', p.base), asp = c?.a?.[0];
   if (!c?.g || !COLOR[asp]) return p.base;
-  // Plain commons are just their colour ("Red"); commons with a shared ability add it ("Red Force", "Red Splash").
   const key = /HP$/.test(c.g) ? COLOR[asp] : `${COLOR[asp]} ${c.g}`;
   if (!genericInfo.has(key)) genericInfo.set(key, { aspect: asp, fam: c.g, names: new Set() });
   genericInfo.get(key).names.add(p.base);
@@ -385,12 +242,6 @@ function baseKey(p) {
 }
 // "Yoda Red Force" for colour groups, "Luke Skywalker · Data Vault" for named bases.
 const deckName = (leader, bk) => genericInfo.has(bk) ? `${leader} ${bk}` : `${leader} · ${bk}`;
-function baseLabel(key) {
-  const gi = genericInfo.get(key);
-  if (gi) return { pips: [gi.aspect], sub: [...gi.names].join(', ') };
-  const c = card('bases', key);
-  return { pips: c?.a || [], sub: c?.hp ? c.hp + ' HP' : '' };
-}
 const deckAspects = p => [...new Set([...(card('leaders', p.leader)?.a || []), ...(card('bases', p.base)?.a || [])])];
 
 // ---------- parsing ----------
@@ -432,31 +283,20 @@ function splitLeader(full) {
   return i < 0 ? { name: full, sub: '' } : { name: full.slice(0, i), sub: full.slice(i + 2) };
 }
 
-function rec(s) {
-  const m = String(s || '').match(/(\d+)\s*-\s*(\d+)(?:\s*-\s*(\d+))?/);
-  return m ? { w: +m[1], l: +m[2], d: +(m[3] || 0) } : { w: 0, l: 0, d: 0 };
-}
-
 const pick = (o, ...keys) => { for (const k of keys) if (o[k] != null && o[k] !== '') return o[k]; return ''; };
 
 function buildRound(objs) {
-  if (!objs.length || !('Decklists1DecklistName' in objs[0]) || !('Rank' in objs[0]))
-    throw new Error('This file does not look like a melee.gg standings export. It needs Rank and Decklists1DecklistName columns.');
+  if (!objs.length || !('Decklists1DecklistName' in objs[0]))
+    throw new Error('This file does not look like a melee.gg standings export. It needs a Decklists1DecklistName column.');
   const all = objs.map(o => ({
     rank: parseInt(o.Rank, 10) || 9999,
     id: pick(o, 'TeamPlayers1ID', 'TeamId', 'TeamPlayers1DisplayName'),
     name: pick(o, 'TeamPlayers1DisplayName', 'TeamPlayers1Username', 'TeamName') || 'Player',
-    ...parseDeck(o.Decklists1DecklistName),
-    m: rec(o.MatchRecord), g: rec(o.GameRecord),
-    status: o.TeamStatusDescription || '',
-    phase: [o.PhaseName, o.MatchingMethod, o.MatchingMethodDescription].join(' ')
+    ...parseDeck(o.Decklists1DecklistName)
   })).sort((a, b) => a.rank - b.rank);
-  // A player listed twice in one round is counted once, at their best rank.
+  // A player listed twice in one round is counted once.
   const seen = new Set();
   const ps = all.filter(p => !p.id || (!seen.has(p.id) && seen.add(p.id)));
-  const playoff = ps.some(p => /playoff|top cut/i.test(p.phase)) && ps.some(p => /^(active|eliminated)$/i.test(p.status));
-  ps.forEach((p, i) => { p.cut = playoff ? /^(active|eliminated)$/i.test(p.status) : (ps.length >= 16 && i < 8); });
-  ps.playoff = playoff;
   const nums = objs.map(o => parseInt(o.RoundNumber, 10)).filter(n => n > 0);
   ps.round = nums.length ? Math.max(...nums) : null;
   ps.tid = objs[0].TournamentId || null;
@@ -467,26 +307,11 @@ function buildRound(objs) {
 function group(ps, keyFn) {
   const map = new Map();
   for (const p of ps) {
-    for (const k of [].concat(keyFn(p))) {
-      if (!map.has(k)) map.set(k, { key: k, players: [], w: 0, l: 0, d: 0, cut: 0, best: 9999 });
-      const g = map.get(k);
-      g.players.push(p); g.w += p.m.w; g.l += p.m.l; g.d += p.m.d;
-      if (p.cut) g.cut++;
-      g.best = Math.min(g.best, p.rank);
-    }
+    const k = keyFn(p);
+    if (!map.has(k)) map.set(k, { key: k, players: [] });
+    map.get(k).players.push(p);
   }
-  return [...map.values()].map(g => {
-    const mp = g.w + g.l + g.d;
-    return { ...g, count: g.players.length, mp, wr: mp ? g.w / mp : 0 };
-  });
-}
-
-function sorter(mode) {
-  const unk = g => g.key === 'Unknown' ? 1 : 0;
-  return (a, b) => unk(a) - unk(b) || (
-    mode === 'wr' ? (b.wr - a.wr || b.count - a.count) :
-    mode === 'cut' ? (b.cut - a.cut || a.best - b.best) :
-    (b.count - a.count || b.cut - a.cut || a.best - b.best));
+  return [...map.values()].map(g => ({ ...g, count: g.players.length }));
 }
 
 const finalRound = () => {
@@ -494,16 +319,29 @@ const finalRound = () => {
   return keys.length ? state.rounds.get(keys[keys.length - 1]) : [];
 };
 
+// Decks sorted by player count. Labels use the short leader name ("Han Solo") unless two rows would then read the same.
+function deckGroups(known) {
+  genericInfo.clear();
+  const groups = group(known, p => p.leader + '\u0000' + baseKey(p)).sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+  const make = (g, full) => deckName(full ? g.leader : splitLeader(g.leader).name, g.base);
+  const seen = new Map();
+  for (const g of groups) {
+    [g.leader, g.base] = g.key.split('\u0000');
+    g.label = make(g, false);
+    seen.set(g.label, (seen.get(g.label) || 0) + 1);
+  }
+  for (const g of groups) if (seen.get(g.label) > 1) g.label = make(g, true);
+  return groups;
+}
+
 // ---------- rendering helpers ----------
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = x => Math.round(x * 100) + '%';
-const ord = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
-const MIN_WR_GAMES = 6; // fewer matches than this and the win % is too noisy to highlight
-const pips = (as, lg) => as.length ? `<span class="pips">${as.map(a => `<i class="pip ${lg ? 'lg ' : ''}a-${a.toLowerCase()}" title="${a}"></i>`).join('')}</span>` : '';
+const pips = as => as.length ? `<span class="pips">${as.map(a => `<i class="pip a-${a.toLowerCase()}" title="${a}"></i>`).join('')}</span>` : '';
 const initials = s => s.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
-function leaderImg(name, cls = 'thumb') {
+function leaderImg(name) {
   const c = card('leaders', name);
-  return c && c.i ? `<img class="${cls}" src="${c.i}" alt="" loading="lazy">` : `<span class="${cls}" aria-hidden="true">${esc(initials(splitLeader(name).name))}</span>`;
+  return c && c.i ? `<img class="thumb" src="${c.i}" alt="" loading="lazy">` : `<span class="thumb" aria-hidden="true">${esc(initials(splitLeader(name).name))}</span>`;
 }
 function baseImg(name) {
   const gi = genericInfo.get(name);
@@ -512,195 +350,71 @@ function baseImg(name) {
   return c && c.i ? `<img class="bthumb" src="${c.i}" alt="" loading="lazy">` : `<span class="bthumb" aria-hidden="true"></span>`;
 }
 
-function bestChip(g) {
-  if (g.best === 1) return '<span class="chip">Winner</span>';
-  if (g.cut) return `<span class="chip cutc">${g.cut} in cut</span>`;
-  return '';
-}
-
-function boardHTML(title, groups, total, kind) {
-  const max = Math.max(...groups.map(g => g.count), 1);
-  const rows = groups.map(g => {
-    let label, art;
-    if (kind === 'leader') {
-      const c = card('leaders', g.key);
-      if (g.key !== 'Unknown') {
-        const { name, sub } = splitLeader(g.key);
-        label = `<b>${esc(name)}</b>${pips(c?.a || [])}<em>${esc(sub)}</em>`;
-      } else label = '<b>Unknown</b>';
-      art = leaderImg(g.key);
-    } else if (kind === 'base') {
-      const b = baseLabel(g.key);
-      label = `<b>${esc(g.key)}</b>${pips(b.pips)}<em>${esc(b.sub)}</em>`;
-      art = baseImg(g.key);
-    } else {
-      const [l, bk] = g.key.split('\u0000');
-      if (l === 'Unknown') { label = '<b>Unknown</b><em>No decklist</em>'; art = leaderImg(l); }
-      else {
-        label = `<b>${esc(splitLeader(l).name)}</b>${pips(deckAspects(g.players[0]))}<em>${esc(bk)}</em>`;
-        art = `<span class="pair">${leaderImg(l)}${baseImg(bk)}</span>`;
-      }
-    }
-    const cutW = g.cut / max * 100, restW = (g.count - g.cut) / max * 100;
-    const wrCls = g.mp < MIN_WR_GAMES ? 'na' : (g.wr >= .6 ? 'hi' : '');
-    const other = p => kind === 'leader' ? p.base : kind === 'base' ? splitLeader(p.leader).name : p.base;
-    const pilots = g.players.map(p => `<li><span class="num rk ${p.cut ? 'in' : ''}">${ord(p.rank)}</span><span>${esc(p.name)} <span class="muted">· ${esc(other(p))}</span></span><span class="num muted">${p.m.w}-${p.m.l}-${p.m.d}</span></li>`).join('');
-    return `<details class="row"><summary>
-      <div class="who">${art}<div class="info"><div class="nm">${label}${bestChip(g)}</div>
-        <div class="track" title="${g.cut} of ${g.count} made top cut">${g.cut ? `<div class="cut" style="width:${cutW}%"></div>` : ''}${g.count - g.cut ? `<div class="rest" style="width:${restW}%"></div>` : ''}</div></div></div>
-      <div class="cnt"><b>${g.count}</b><small>${pct(g.count / total)}</small></div>
-      <div class="wr ${wrCls}" title="${g.w}-${g.l}-${g.d} in matches">${g.mp ? pct(g.wr) : '–'}</div>
-    </summary><ul class="pilots">${pilots}</ul></details>`;
-  }).join('');
-  const col = { leader: 'Leader', base: 'Base', deck: 'Leader + base' }[kind];
-  return `<h3>${title}<small>${groups.filter(g => !g.key.startsWith('Unknown')).length} different · tap a row for pilots</small></h3>
-    <div class="cols"><span>${col}</span><span>Players</span><span>Win %</span></div>${rows}`;
-}
-
-function renderAspects(ps) {
-  const known = ps.filter(p => p.known);
-  const cut = known.filter(p => p.cut);
-  const her = known.filter(p => deckAspects(p).includes('Heroism')).length;
-  const vil = known.filter(p => deckAspects(p).includes('Villainy')).length;
-  const oth = known.length - her - vil;
-  const n = known.length || 1;
-  document.getElementById('split').innerHTML = `<div class="bar">
-      ${her ? `<div class="her" style="width:${her / n * 100}%">Heroism ${pct(her / n)}</div>` : ''}
-      ${oth > 0 ? `<div class="oth" style="width:${oth / n * 100}%" title="Neither Heroism nor Villainy">${oth}</div>` : ''}
-      ${vil ? `<div class="vil" style="width:${vil / n * 100}%">Villainy ${pct(vil / n)}</div>` : ''}</div>`;
-  document.getElementById('aspects').innerHTML = ASPECTS.map(a => {
-    const f = known.filter(p => deckAspects(p).includes(a));
-    const c = cut.filter(p => deckAspects(p).includes(a));
-    const g = group(f, () => a)[0];
-    const fs = f.length / n, cs = cut.length ? c.length / cut.length : 0;
-    return `<div class="asp"><div class="t">${pips([a], true)}${a}</div>
-      <div class="big num">${pct(fs)}</div>
-      <div class="meter"><div class="row"><span>Field · ${f.length}</span><span class="num">${g && g.mp ? pct(g.wr) + ' win' : ''}</span></div>
-        <div class="track"><div class="rest" style="width:${fs * 100}%"></div></div></div>
-      ${cut.length ? `<div class="meter"><div class="row"><span>Top cut · ${c.length}</span><span class="num">${pct(cs)}</span></div>
-        <div class="track"><div class="cut" style="width:${cs * 100}%"></div></div></div>` : ''}</div>`;
-  }).join('');
-}
-
-function renderRounds() {
-  const el = document.getElementById('rounds');
-  const keys = [...state.rounds.keys()].sort((a, b) => a - b);
-  if (keys.length < 2) {
-    el.innerHTML = `<div class="empty"><h3>Add more rounds to see the race</h3>
-      <p>melee.gg lets you export standings after every round. Upload two or more exports from the same event (all at once or one by one) and this section shows how each leader climbed or fell.</p>
-      ${keys.length ? `<div class="rchips">${keys.map(k => `<span>Round ${k} loaded</span>`).join('')}</div>` : ''}</div>`;
-    return;
-  }
-  const final = state.rounds.get(keys[keys.length - 1]);
-  const top = group(final.filter(p => p.known), p => p.leader).sort(sorter('count')).slice(0, 12);
-  const head = `<thead><tr><th>Leader</th>${keys.map(k => `<th class="c">R${k}</th>`).join('')}</tr></thead>`;
-  const body = top.map(t => {
-    const { name, sub } = splitLeader(t.key);
-    const cells = keys.map(k => {
-      const ps = state.rounds.get(k).filter(p => p.leader === t.key);
-      if (!ps.length) return '<td class="h none">–</td>';
-      const g = group(ps, () => 'x')[0];
-      const alive = ps.filter(p => !/drop/i.test(p.status)).length;
-      if (!g.mp) return `<td class="h none">–<small>${alive} in</small></td>`;
-      const mix = Math.round(Math.max(0, g.wr - .3) / .7 * 55);
-      return `<td class="h" style="background:color-mix(in srgb, var(--gold) ${mix}%, transparent)">${pct(g.wr)}<small>${alive} in</small></td>`;
-    }).join('');
-    return `<tr><td><div class="cell">${leaderImg(t.key)}<div><div class="ld">${esc(name)}</div><div class="sub">${esc(sub)}</div></div></div></td>${cells}</tr>`;
-  }).join('');
-  el.innerHTML = `<div class="tbl-wrap"><table class="heat">${head}<tbody>${body}</tbody></table></div>`;
-}
-
 function render() {
   const ps = finalRound(), total = ps.length;
   if (!total) return;
-  genericInfo.clear();
-  const leaders = group(ps, p => p.leader).sort(sorter(state.sort));
-  const bases = group(ps, baseKey).sort(sorter(state.sort));
-  const decks = group(ps, p => p.leader + '\u0000' + baseKey(p)).sort(sorter(state.sort));
-  const known = ps.filter(p => p.known);
-  const champ = ps[0];
-  const topLeader = group(known, p => p.leader).sort(sorter('count'))[0];
-  const topBase = group(known, baseKey).sort(sorter('count'))[0];
-  const cutN = ps.filter(p => p.cut).length;
+  const known = ps.filter(p => p.known), n = known.length || 1;
+  const decks = deckGroups(known);
+  const top = decks[0];
+  const leaders = new Set(known.map(p => p.leader)).size;
 
   document.getElementById('stats').innerHTML = `
-    <div class="stat"><span class="eyebrow">Players</span><span class="v num">${total}</span><span class="s">${known.length} submitted a decklist${cutN ? ` · top ${cutN} cut` : ''}</span></div>
-    <div class="stat"><span class="eyebrow">Most played leader</span><div class="hd">${topLeader ? leaderImg(topLeader.key) : ''}<div><span class="v sm">${topLeader ? esc(splitLeader(topLeader.key).name) : '–'}</span><span class="s">${topLeader ? `${topLeader.count} players · ${pct(topLeader.count / total)}` : ''}</span></div></div></div>
-    <div class="stat"><span class="eyebrow">Most played base</span><span class="v sm">${topBase ? esc(topBase.key) : '–'}</span><span class="s">${topBase ? `${topBase.count} players · ${pct(topBase.count / total)} of field` : ''}</span></div>
-    <div class="stat champ"><span class="eyebrow">${ps.playoff ? 'Champion' : 'First place'}</span><div class="hd">${leaderImg(champ.leader)}<div><span class="v sm">${esc(splitLeader(champ.leader).name)}</span><span class="s">${esc(champ.name)} · ${esc(champ.base)} · ${champ.m.w}-${champ.m.l}-${champ.m.d}</span></div></div></div>`;
+    <div class="stat"><span class="eyebrow">Players</span><span class="v">${total}</span><span class="s">${known.length} submitted a decklist</span></div>
+    <div class="stat"><span class="eyebrow">Different decks</span><span class="v">${decks.length}</span><span class="s">Leader + base combinations</span></div>
+    <div class="stat"><span class="eyebrow">Different leaders</span><span class="v">${leaders}</span><span class="s">Across all decks</span></div>
+    <div class="stat"><span class="eyebrow">Most played deck</span><span class="v sm">${top ? esc(top.label) : '–'}</span><span class="s">${top ? `${top.count} players · ${pct(top.count / n)}` : ''}</span></div>`;
 
-  const deckView = state.view === 'decks';
-  document.getElementById('boards').classList.toggle('single', deckView);
-  document.getElementById('bases').hidden = deckView;
-  document.getElementById('leaders').innerHTML = deckView ? boardHTML('Decks', decks, total, 'deck') : boardHTML('Leaders', leaders, total, 'leader');
-  if (!deckView) document.getElementById('bases').innerHTML = boardHTML('Bases', bases, total, 'base');
-  renderAspects(ps);
-
-  const cut = ps.filter(p => p.cut);
-  document.getElementById('cutsec').hidden = !cut.length;
-  document.getElementById('cutlist').innerHTML = cut.map(p => {
-    const { name, sub } = splitLeader(p.leader);
-    const b = card('bases', p.base);
-    return `<div class="seat ${p.rank === 1 ? 'first' : ''}"><div class="art">${b?.i ? `<img class="bg" src="${b.i}" alt="">` : ''}${leaderImg(p.leader, 'lead')}<span class="pos">${ord(p.rank)}</span></div>
-      <div class="body"><div class="top"><span class="pl">${esc(p.name)}</span><span class="rec">${p.m.w}-${p.m.l}-${p.m.d}</span></div>
-      <div class="ld">${esc(name)}</div><div class="bs">${esc(sub ? sub + ' · ' : '')}${esc(p.base)}</div>
-      <div>${pips(deckAspects(p))}</div></div></div>`;
+  const max = Math.max(...decks.map(g => g.count), 1);
+  const rows = decks.map((g, i) => {
+    const sub = genericInfo.has(g.base) ? [...genericInfo.get(g.base).names].join(', ') : '';
+    const pilots = g.players.map(p => `<li>${esc(p.name)}${p.base !== g.base ? ` <span class="muted">· ${esc(p.base)}</span>` : ''}</li>`).join('');
+    return `<details class="row"><summary>
+      <span class="no">${String(i + 1).padStart(2, '0')}</span>
+      <div class="who"><span class="pair">${leaderImg(g.leader)}${baseImg(g.base)}</span><div class="info">
+        <div class="nm"><b>${esc(g.label)}</b>${pips(deckAspects(g.players[0]))}${sub ? `<em>${esc(sub)}</em>` : ''}</div>
+        <div class="track"><div style="width:${g.count / max * 100}%"></div></div></div></div>
+      <div class="num">${g.count}</div>
+      <div class="num share">${pct(g.count / n)}</div>
+    </summary><ul class="pilots">${pilots}</ul></details>`;
   }).join('');
-
-  renderRounds();
-
-  const pairs = group(known, p => p.leader + '\u0000' + baseKey(p)).sort(sorter(state.sort));
-  document.getElementById('pairs').innerHTML = `<thead><tr><th>Leader</th><th>Base</th><th>Players</th><th class="r">Match record</th><th class="r">Win %</th><th class="r">Best</th></tr></thead><tbody>` +
-    pairs.map(g => {
-      const [l, b] = g.key.split('\u0000'); const { name, sub } = splitLeader(l);
-      const dots = g.players.map(p => `<i class="${p.cut ? 'in' : ''}" title="${esc(p.name)} · ${ord(p.rank)}"></i>`).join('');
-      return `<tr><td><div class="cell">${leaderImg(l)}<div><div class="ld">${esc(name)}</div><div class="sub">${esc(sub)}</div></div></div></td>
-        <td><div class="cell">${baseImg(b)}<span>${esc(b)}</span></div></td>
-        <td><span class="num">${g.count}</span> <span class="dots">${dots}</span></td>
-        <td class="r num">${g.w}-${g.l}-${g.d}</td><td class="r num">${g.mp ? pct(g.wr) : '–'}</td><td class="r num">${ord(g.best)}</td></tr>`;
-    }).join('') + '</tbody>';
+  document.getElementById('decks').innerHTML = `<h3>Decks<small>${decks.length} different · tap a row to see who played it</small></h3>
+    <div class="cols"><span>#</span><span>Leader + base</span><span>Players</span><span>Share</span></div>${rows}`;
 }
 
 // ---------- loading ----------
 function setNotice(html, err) {
-  const n = document.getElementById('notice');
-  n.innerHTML = html; n.classList.toggle('err', !!err);
+  const el = document.getElementById('notice');
+  el.innerHTML = html; el.classList.toggle('err', !!err);
 }
 
 function store(get, k, v) {
   try { if (get) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch (e) { return ''; }
 }
 
-function addRound(rows, isSample) {
+function addFile(rows, isSample) {
   // One export can hold several rounds (one row per player per round), so split it by round first.
-  const objs = tableToObjects(rows);
   const byRound = new Map();
-  for (const o of objs) {
+  for (const o of tableToObjects(rows)) {
     const k = parseInt(o.RoundNumber, 10) || 0;
     if (!byRound.has(k)) byRound.set(k, []);
     byRound.get(k).push(o);
   }
-  let switching = false;
   for (const [, part] of [...byRound].sort((a, b) => a[0] - b[0])) {
     const ps = buildRound(part);
-    const fresh = state.sample !== !!isSample || (ps.tid && state.tid && ps.tid !== state.tid);
-    if (fresh) { state.rounds.clear(); switching = true; }
+    if (state.sample !== !!isSample || (ps.tid && state.tid && ps.tid !== state.tid)) state.rounds.clear();
     state.sample = !!isSample;
     state.tid = ps.tid || state.tid;
-    const r = ps.round ?? (Math.max(0, ...state.rounds.keys()) + 1);
-    state.rounds.set(r, ps);
+    state.rounds.set(ps.round ?? (Math.max(0, ...state.rounds.keys()) + 1), ps);
   }
-  return switching;
 }
 
 function afterLoad(label) {
   const ps = finalRound();
-  const rounds = [...state.rounds.keys()].sort((a, b) => a - b);
-  const ev = document.getElementById('evname');
-  ev.value = state.sample ? 'Sample event' : store(true, 'swu-ev-' + state.tid);
+  const last = Math.max(...state.rounds.keys());
+  document.getElementById('evname').value = state.sample ? 'Sample event' : store(true, 'swu-ev-' + state.tid);
   setNotice(state.sample
     ? `Showing a <b>sample event</b> (${ps.length} players). Upload your own export to replace it.`
-    : `<b>${ps.length} players</b> · ${rounds.length > 1 ? `rounds ${rounds.join(', ')} loaded` : `round ${rounds[0]} loaded`}${label ? ' · ' + esc(label) : ''}`);
+    : `<b>${ps.length} players</b>${last ? ` · round ${last} standings` : ''}${label ? ' · ' + esc(label) : ''}`);
   render();
 }
 
@@ -717,59 +431,24 @@ async function handleFiles(list) {
   const files = [...(list || [])];
   if (!files.length) return;
   try {
-    for (const f of files) addRound(await readFile(f), false);
+    for (const f of files) addFile(await readFile(f), false);
     afterLoad(files.length === 1 ? files[0].name : `${files.length} files`);
   } catch (e) { setNotice(esc(e.message || 'Could not read that file.'), true); }
 }
 
-// ---------- share image ----------
-const C = { bg: '#0a0a0b', surface: '#151517', ink: '#f7f7f7', muted: '#a3a3ab', line: '#2c2c31', gold: '#ff1418', holo: 'rgba(255,255,255,.3)',
-  asp: { Vigilance: '#4f8fe0', Command: '#3fae5e', Aggression: '#e8603f', Cunning: '#e6b93a', Heroism: '#ece8da', Villainy: '#000000' } };
+// ---------- share image (16:9): framed table on the left, art ring on the right ----------
+const C = { red: '#ff1418', white: '#f4f1f1', soft: '#d9b9ba' };
 const imgCache = new Map();
 function loadImg(src) {
   if (!src) return Promise.resolve(null);
   if (!imgCache.has(src)) imgCache.set(src, new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }));
   return imgCache.get(src);
 }
-function rr(x, y, w, h, r, ctx) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
 function fit(ctx, text, max) {
   if (ctx.measureText(text).width <= max) return text;
   while (text.length > 1 && ctx.measureText(text + '…').width > max) text = text.slice(0, -1);
   return text + '…';
 }
-async function drawImgCover(ctx, src, x, y, w, h, r) {
-  const im = await loadImg(src);
-  ctx.save(); rr(x, y, w, h, r, ctx); ctx.clip();
-  if (im) {
-    const s = Math.max(w / im.width, h / im.height), iw = im.width * s, ih = im.height * s;
-    ctx.drawImage(im, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
-  } else { ctx.fillStyle = C.line; ctx.fillRect(x, y, w, h); }
-  ctx.restore();
-}
-function pipsAt(ctx, as, x, y, r) {
-  as.forEach((a, i) => {
-    ctx.beginPath(); ctx.arc(x + i * (r * 2 + 5) + r, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = C.asp[a] || C.muted; ctx.fill();
-    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(231,234,245,.45)'; ctx.stroke();
-  });
-}
-
-function bar(ctx, x, y, w, h, cutF, restF) {
-  const cw = cutF * w, rw = restF * w;
-  ctx.fillStyle = C.line; rr(x, y, w, h, 3, ctx); ctx.fill();
-  if (cw) { ctx.fillStyle = C.gold; rr(x, y, cw, h, 3, ctx); ctx.fill(); }
-  if (rw) { ctx.fillStyle = C.holo; rr(x + cw + (cw ? 2 : 0), y, Math.max(rw - (cw ? 2 : 0), 2), h, 3, ctx); ctx.fill(); }
-}
-async function drawBase(ctx, key, x, y, w, h) {
-  const gi = genericInfo.get(key);
-  if (!gi) return drawImgCover(ctx, card('bases', key)?.i, x, y, w, h, 8);
-  ctx.fillStyle = C.asp[gi.aspect]; rr(x, y, w, h, 8, ctx); ctx.fill();
-  ctx.fillStyle = gi.aspect === 'Cunning' ? '#141414' : '#ffffff';
-  ctx.font = `italic 800 ${Math.round(h * .4)}px "Barlow Condensed", "Arial Narrow", sans-serif`;
-  ctx.textAlign = 'center'; ctx.fillText(gi.fam.toUpperCase(), x + w / 2, y + h / 2 + h * .14); ctx.textAlign = 'left';
-}
-
-// ---------- standings image (16:9): framed table on the left, art ring on the right ----------
 function sectorPath(ctx, cx, cy, r0, r1, a0, a1) {
   ctx.beginPath(); ctx.arc(cx, cy, r1, a0, a1); ctx.arc(cx, cy, r0, a1, a0, true); ctx.closePath();
 }
@@ -783,54 +462,26 @@ function blurred(im, w, h) {
   drawCover(s.getContext('2d'), im, 0, 0, s.width, s.height, .3);
   return s;
 }
-function wideData(known) {
-  const mode = state.imgView;
-  const keyFn = mode === 'bases' ? baseKey : mode === 'decks' ? (p => p.leader + '\u0000' + baseKey(p)) : (p => p.leader);
-  const groups = group(known, keyFn).sort(sorter('count'));
-  // Use the short leader name ("Han Solo") unless two rows would then read the same.
-  const make = (g, full) => {
-    if (mode === 'bases') return g.key;
-    const [l, b] = g.key.split('\u0000');
-    const n = full ? l : splitLeader(l).name;
-    return mode === 'decks' ? deckName(n, b) : n;
-  };
-  const seen = new Map();
-  for (const g of groups) { g.label = make(g, false); seen.set(g.label, (seen.get(g.label) || 0) + 1); }
-  for (const g of groups) {
-    if (seen.get(g.label) > 1) g.label = make(g, true);
-    const [l] = g.key.split('\u0000');
-    g.art = mode === 'bases' ? { kind: 'bases', key: g.key } : { kind: 'leaders', key: l };
-  }
-  return groups;
-}
-async function artFor(a) {
-  // A colour group (e.g. "Blue Force") borrows the art of its most-played base.
-  const gi = a.kind === 'bases' ? genericInfo.get(a.key) : null;
-  const c = card(a.kind, gi ? [...gi.names][0] : a.key);
+async function leaderArt(name) {
+  const c = card('leaders', name);
   return (c?.h && await loadImg(c.h)) || (c?.i && await loadImg(c.i)) || null;
 }
 
-async function makeWide() {
+async function makeImage() {
   const ps = finalRound(); if (!ps.length) return null;
-  await Promise.all(['italic 800 80px "Barlow Condensed"', '700 40px "Barlow Condensed"', '600 22px Barlow', '600 24px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
+  await Promise.all(['italic 800 80px "Barlow Condensed"', '700 40px "Barlow Condensed"', '600 22px Barlow', '700 22px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
   const W = 1920, H = 1080;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   const D = '"Barlow Condensed", "Arial Narrow", sans-serif', B = 'Barlow, system-ui, sans-serif', M = '"JetBrains Mono", Menlo, monospace';
-  const WHITE = '#f4f1f1', SOFT = '#d9b9ba', RED = C.gold;
   const known = ps.filter(p => p.known), total = ps.length, n = known.length || 1;
-  genericInfo.clear();
-  const groups = wideData(known);
-  const mode = state.imgView;
+  const groups = deckGroups(known);
   const ev = document.getElementById('evname').value.trim();
 
-  // Background: blurred champion art, washed red, fading to a dark panel on the left.
+  // Background: blurred art of the most played deck's leader, washed red, fading to a dark panel on the left.
   ctx.fillStyle = '#100506'; ctx.fillRect(0, 0, W, H);
-  const champArt = await artFor({ kind: 'leaders', key: ps[0].leader });
-  if (champArt) {
-    ctx.save(); ctx.globalAlpha = .9; ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(blurred(champArt, 1100, H), 860, 0, 1100, H); ctx.restore();
-  }
+  const bgArt = groups[0] ? await leaderArt(groups[0].leader) : null;
+  if (bgArt) { ctx.save(); ctx.globalAlpha = .9; ctx.drawImage(blurred(bgArt, 1100, H), 860, 0, 1100, H); ctx.restore(); }
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#b3070d'; ctx.fillRect(820, 0, W - 820, H); ctx.restore();
   const shade = ctx.createLinearGradient(0, 0, 1260, 0);
   shade.addColorStop(0, 'rgba(22,5,7,.97)'); shade.addColorStop(.78, 'rgba(26,5,7,.93)'); shade.addColorStop(1, 'rgba(26,5,7,0)');
@@ -842,21 +493,20 @@ async function makeWide() {
 
   // Title box
   const X0 = 40, X1 = 980;
-  ctx.strokeStyle = WHITE; ctx.lineWidth = 3; ctx.strokeRect(X0, 40, X1 - X0, 156);
+  ctx.strokeStyle = C.white; ctx.lineWidth = 3; ctx.strokeRect(X0, 40, X1 - X0, 156);
   const logo = await loadImg('bdst-logo.png');
   const LW = 230;
   if (logo) ctx.drawImage(logo, X0 + 24, 40 + (156 - LW * logo.height / logo.width) / 2, LW, LW * logo.height / logo.width);
   const tmax = X1 - X0 - LW - 72;
-  const title = (ev || 'Meta Report').toUpperCase();
+  const title = (ev || 'Deck Breakdown').toUpperCase();
   let fs = 76; ctx.font = `italic 800 ${fs}px ${D}`;
   while (fs > 44 && ctx.measureText(title).width > tmax) { fs -= 2; ctx.font = `italic 800 ${fs}px ${D}`; }
-  ctx.textAlign = 'right'; ctx.fillStyle = WHITE; ctx.fillText(fit(ctx, title, tmax), X1 - 26, 130);
-  const cutN = ps.filter(p => p.cut).length;
-  ctx.font = `600 22px ${B}`; ctx.fillStyle = SOFT;
-  ctx.fillText(`STAR WARS: UNLIMITED  ·  ${total} PLAYERS${cutN ? `  ·  TOP ${cutN} CUT` : ''}`, X1 - 26, 172);
+  ctx.textAlign = 'right'; ctx.fillStyle = C.white; ctx.fillText(fit(ctx, title, tmax), X1 - 26, 130);
+  ctx.font = `600 22px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText(`STAR WARS: UNLIMITED  ·  ${total} PLAYERS  ·  ${groups.length} DECKS`, X1 - 26, 172);
 
   // Main table
-  const cols = { name: 600, d1: 620, d2: 764, d3: 872, c1: 692, c2: 818, c3: 926 };
+  const cols = { name: 680, d1: 700, d2: 840, c1: 770, c2: 910 };
   const T0 = 216, HEAD = 58;
   const room = Math.floor((850 - (T0 + HEAD) - 3 * 50) / 38) + 3;
   const overflow = groups.length > room;
@@ -868,43 +518,37 @@ async function makeWide() {
   ctx.lineWidth = 3; ctx.strokeRect(X0, T0, X1 - X0, rowsEnd - T0);
   ctx.lineWidth = 2; ctx.beginPath();
   ctx.moveTo(X0, T0 + HEAD); ctx.lineTo(X1, T0 + HEAD);
-  for (const x of [cols.d1, cols.d2, cols.d3]) { ctx.moveTo(x, T0); ctx.lineTo(x, rowsEnd); }
+  for (const x of [cols.d1, cols.d2]) { ctx.moveTo(x, T0); ctx.lineTo(x, rowsEnd); }
   ctx.stroke();
-  ctx.font = `700 24px ${D}`; ctx.fillStyle = WHITE;
-  ctx.textAlign = 'right'; ctx.fillText({ leaders: 'LEADER', bases: 'BASE', decks: 'DECK' }[mode], cols.name, T0 + 38);
-  ctx.textAlign = 'center'; ctx.fillText('PLAYERS', cols.c1, T0 + 38); ctx.fillText('SHARE', cols.c2, T0 + 38); ctx.fillText('WIN %', cols.c3, T0 + 38);
+  ctx.font = `700 24px ${D}`; ctx.fillStyle = C.white;
+  ctx.textAlign = 'right'; ctx.fillText('DECK', cols.name, T0 + 38);
+  ctx.textAlign = 'center'; ctx.fillText('PLAYERS', cols.c1, T0 + 38); ctx.fillText('SHARE', cols.c2, T0 + 38);
   const row = (g, i, label, num) => {
     const h = rowH(i), big = i < 3, base = y + h * .76;
-    ctx.font = `700 ${big ? 22 : 18}px ${M}`; ctx.textAlign = 'left'; ctx.fillStyle = RED;
+    ctx.font = `700 ${big ? 22 : 18}px ${M}`; ctx.textAlign = 'left'; ctx.fillStyle = C.red;
     if (num) ctx.fillText(String(num).padStart(2, '0'), X0 + 22, base - (big ? 4 : 2));
-    const room = cols.name - X0 - 90, text = label.toUpperCase();
+    const space = cols.name - X0 - 90, text = label.toUpperCase();
     let fsz = big ? 42 : 32; ctx.font = `700 ${fsz}px ${D}`;
-    while (fsz > (big ? 28 : 22) && ctx.measureText(text).width > room) { fsz--; ctx.font = `700 ${fsz}px ${D}`; }
-    ctx.fillStyle = WHITE; ctx.textAlign = 'right';
-    ctx.fillText(fit(ctx, text, room), cols.name, base);
-    ctx.font = `700 ${big ? 42 : 32}px ${D}`;
-    ctx.textAlign = 'center';
+    while (fsz > (big ? 28 : 22) && ctx.measureText(text).width > space) { fsz--; ctx.font = `700 ${fsz}px ${D}`; }
+    ctx.fillStyle = C.white; ctx.textAlign = 'right';
+    ctx.fillText(fit(ctx, text, space), cols.name, base);
+    ctx.font = `700 ${big ? 42 : 32}px ${D}`; ctx.textAlign = 'center';
     ctx.fillText(String(g.count), cols.c1, base);
     ctx.fillText(pct(g.count / n), cols.c2, base);
-    ctx.fillStyle = g.mp >= MIN_WR_GAMES && g.wr >= .6 ? RED : WHITE;
-    ctx.fillText(g.mp ? pct(g.wr) : '–', cols.c3, base);
     y += h;
   };
   shown.forEach((g, i) => row(g, i, g.label, i + 1));
-  if (rest.length) {
-    const o = group(rest.flatMap(g => g.players), () => 'other')[0];
-    row(o, 99, `Other ${{ leaders: 'leaders', bases: 'bases', decks: 'decks' }[mode]}`, null);
-  }
+  if (rest.length) row({ count: rest.reduce((s, g) => s + g.count, 0) }, 99, 'Other decks', null);
 
-  // Small table for the tail
+  // Compact table for the tail
   if (rest.length) {
     const S0 = rowsEnd + 16, rh = 21, maxPer = Math.floor((1040 - S0 - 20) / rh);
-    const list = rest.length > maxPer * 2 ? [...rest.slice(0, maxPer * 2 - 1), { label: `+${rest.length - maxPer * 2 + 1} more`, count: '', more: true }] : rest;
+    const list = rest.length > maxPer * 2 ? [...rest.slice(0, maxPer * 2 - 1), { label: `+${rest.length - maxPer * 2 + 1} more`, more: true }] : rest;
     const per = Math.ceil(list.length / 2), ncol = list.length > 1 ? 2 : 1, S1 = S0 + 20 + per * rh;
     ctx.lineWidth = 3; ctx.strokeRect(X0, S0, X1 - X0, S1 - S0);
     list.forEach((g, i) => {
       const c = Math.floor(i / per), r = i % per, cx = X0 + c * 470, yy = S0 + 10 + r * rh + rh * .78;
-      ctx.font = `600 18px ${D}`; ctx.fillStyle = WHITE; ctx.textAlign = 'right';
+      ctx.font = `600 18px ${D}`; ctx.fillStyle = C.white; ctx.textAlign = 'right';
       ctx.fillText(fit(ctx, g.label.toUpperCase(), 300), cx + 330, yy);
       if (!g.more) { ctx.textAlign = 'center'; ctx.fillText(String(g.count), cx + 368, yy); ctx.fillText(pct(g.count / n), cx + 425, yy); }
     });
@@ -913,7 +557,7 @@ async function makeWide() {
     ctx.stroke();
   }
 
-  // Art ring
+  // Art ring: one wedge per deck, sized by share, filled with its leader's art
   const cx = 1450, cy = 556, r1 = 430, r0 = 238;
   const ring = groups.length > 24 ? [...groups.slice(0, 23), { other: true, count: groups.slice(23).reduce((s, g) => s + g.count, 0) }] : groups;
   const sum = ring.reduce((s, g) => s + g.count, 0) || 1;
@@ -924,16 +568,15 @@ async function makeWide() {
   for (let i = 0; i < ring.length; i++) {
     const g = ring[i], a1 = a + g.count / sum * Math.PI * 2;
     ctx.save(); sectorPath(ctx, cx, cy, r0, r1, a, a1); ctx.clip();
-    const im = g.other ? null : await artFor(g.art);
-    const gi = !g.other && g.art.kind === 'bases' ? genericInfo.get(g.art.key) : null;
+    const im = g.other ? null : await leaderArt(g.leader);
     const pts = [];
     for (let k = 0; k <= 24; k++) { const t = a + (a1 - a) * k / 24; pts.push([cx + r1 * Math.cos(t), cy + r1 * Math.sin(t)], [cx + r0 * Math.cos(t), cy + r0 * Math.sin(t)]); }
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
     let bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
     if (bw < 220) { bx -= (220 - bw) / 2; bw = 220; }
     if (bh < 220) { by -= (220 - bh) / 2; bh = 220; }
-    if (im) drawCover(ctx, im, bx, by, bw, bh, g.art.kind === 'leaders' ? .25 : .5);
-    if (gi || !im) { ctx.globalAlpha = im ? .45 : 1; ctx.fillStyle = gi ? C.asp[gi.aspect] : '#3a0d10'; ctx.fillRect(bx, by, bw, bh); ctx.globalAlpha = 1; }
+    if (im) drawCover(ctx, im, bx, by, bw, bh, .25);
+    else { ctx.fillStyle = '#3a0d10'; ctx.fillRect(bx, by, bw, bh); }
     ctx.restore();
     if (!g.other && g.count / sum >= .035) marks.push([(a + a1) / 2, i + 1]);
     a = a1;
@@ -942,203 +585,47 @@ async function makeWide() {
   a = -Math.PI / 2;
   for (const g of ring) { ctx.moveTo(cx + r0 * Math.cos(a), cy + r0 * Math.sin(a)); ctx.lineTo(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a)); a += g.count / sum * Math.PI * 2; }
   ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy, r1 + 10, 0, Math.PI * 2); ctx.strokeStyle = RED; ctx.lineWidth = 6; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, r1 + 10, 0, Math.PI * 2); ctx.strokeStyle = C.red; ctx.lineWidth = 6; ctx.stroke();
   for (const [m, num] of marks) {
     const mx = cx + (r1 - 36) * Math.cos(m), my = cy + (r1 - 36) * Math.sin(m);
     ctx.beginPath(); ctx.arc(mx, my, 21, 0, Math.PI * 2); ctx.fillStyle = 'rgba(11,4,5,.88)'; ctx.fill();
-    ctx.lineWidth = 2.5; ctx.strokeStyle = RED; ctx.stroke();
-    ctx.fillStyle = WHITE; ctx.font = `700 19px ${M}`; ctx.textAlign = 'center'; ctx.fillText(String(num).padStart(2, '0'), mx, my + 7);
+    ctx.lineWidth = 2.5; ctx.strokeStyle = C.red; ctx.stroke();
+    ctx.fillStyle = C.white; ctx.font = `700 19px ${M}`; ctx.textAlign = 'center'; ctx.fillText(String(num).padStart(2, '0'), mx, my + 7);
   }
+
   // Centre
   const cg = ctx.createRadialGradient(cx, cy - 60, 20, cx, cy, r0);
   cg.addColorStop(0, '#3a0a0d'); cg.addColorStop(1, '#160506');
   ctx.beginPath(); ctx.arc(cx, cy, r0 - 4, 0, Math.PI * 2); ctx.fillStyle = cg; ctx.fill();
-  ctx.lineWidth = 3; ctx.strokeStyle = WHITE; ctx.stroke();
+  ctx.lineWidth = 3; ctx.strokeStyle = C.white; ctx.stroke();
   if (logo) { const w = 280, h = w * logo.height / logo.width; ctx.drawImage(logo, cx - w / 2, cy - 168, w, h); }
-  ctx.textAlign = 'center'; ctx.fillStyle = WHITE;
+  ctx.textAlign = 'center'; ctx.fillStyle = C.white;
   const ct = (ev || 'Meta Report').toUpperCase();
   let cfs = 60; ctx.font = `italic 800 ${cfs}px ${D}`;
   while (cfs > 34 && ctx.measureText(ct).width > 400) { cfs -= 2; ctx.font = `italic 800 ${cfs}px ${D}`; }
   ctx.fillText(fit(ctx, ct, 400), cx, cy + 22);
-  ctx.font = `italic 800 40px ${D}`; ctx.fillStyle = RED;
-  ctx.fillText({ leaders: 'LEADER BREAKDOWN', bases: 'BASE BREAKDOWN', decks: 'DECK BREAKDOWN' }[mode], cx, cy + 72);
-  ctx.font = `600 20px ${B}`; ctx.fillStyle = SOFT;
-  const ch = ps[0];
-  ctx.fillText(fit(ctx, `${ps.playoff ? 'CHAMPION' : 'FIRST'}: ${deckName(splitLeader(ch.leader).name, baseKey(ch)).toUpperCase()}`, 380), cx, cy + 114);
+  ctx.font = `italic 800 40px ${D}`; ctx.fillStyle = C.red;
+  ctx.fillText('DECK BREAKDOWN', cx, cy + 72);
+  ctx.font = `600 20px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText(`${total} PLAYERS  ·  ${groups.length} DECKS`, cx, cy + 114);
 
-  ctx.textAlign = 'right'; ctx.font = `500 15px ${B}`; ctx.fillStyle = SOFT;
+  ctx.textAlign = 'right'; ctx.font = `500 15px ${B}`; ctx.fillStyle = C.soft;
   ctx.fillText('*Percentages are rounded so may not add to 100%  ·  Data: melee.gg  ·  Card art © Lucasfilm Ltd. & FFG via swu-db.com', W - 40, H - 22);
   ctx.textAlign = 'left';
   return cv;
 }
 
-async function makeImage() {
-  return state.imgFormat === 'wide' ? makeWide() : makeSummary();
-}
-
-async function makeSummary() {
-  const ps = finalRound(); if (!ps.length) return null;
-  await Promise.all(['700 80px "Barlow Condensed"', 'italic 800 80px "Barlow Condensed"', '600 30px "Barlow Condensed"', '500 24px Barlow', '600 24px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {})));
-  const W = 1080, H = 1350, P = 64;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
-  const D = '"Barlow Condensed", "Arial Narrow", sans-serif', B = 'Barlow, system-ui, sans-serif', M = '"JetBrains Mono", Menlo, monospace';
-  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W - 160, 60, 10, W - 160, 60, 640);
-  glow.addColorStop(0, 'rgba(255,20,24,.16)'); glow.addColorStop(1, 'rgba(255,20,24,0)');
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-
-  const known = ps.filter(p => p.known), total = ps.length;
-  const ev = document.getElementById('evname').value.trim();
-  const deckMode = state.imgView === 'decks';
-  ctx.textBaseline = 'alphabetic';
-  const logo = await loadImg('bdst-logo.png');
-  const LW = 220;
-  if (logo) ctx.drawImage(logo, W - P - LW, 46, LW, LW * logo.height / logo.width);
-  const tw = W - 2 * P - (logo ? LW + 24 : 0);
-  ctx.fillStyle = C.gold; ctx.font = `600 22px ${B}`;
-  ctx.fillText(`STAR WARS: UNLIMITED  ·  ${total} PLAYERS`, P, 96);
-  const title = (ev || (deckMode ? 'Deck Breakdown' : 'Leader & Base Breakdown')).toUpperCase();
-  let fs = 78; ctx.font = `italic 800 ${fs}px ${D}`;
-  while (fs > 50 && ctx.measureText(title).width > tw) { fs -= 2; ctx.font = `italic 800 ${fs}px ${D}`; }
-  ctx.fillStyle = C.ink; ctx.fillText(fit(ctx, title, tw), P, 172);
-  ctx.fillStyle = C.muted; ctx.font = `500 26px ${B}`;
-  ctx.fillText(ev ? (deckMode ? 'Deck breakdown · leader + base' : 'Leader & base breakdown') : 'From melee.gg standings', P, 214);
-
-  // Champion
-  const ch = ps[0];
-  ctx.fillStyle = C.surface; rr(P, 246, W - 2 * P, 168, 16, ctx); ctx.fill();
-  ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.stroke();
-  const chB = card('bases', ch.base);
-  if (chB?.i) { ctx.save(); ctx.globalAlpha = .35; await drawImgCover(ctx, chB.i, W - P - 420, 246, 420, 168, 16); ctx.restore();
-    const fade = ctx.createLinearGradient(W - P - 420, 0, W - P - 200, 0); fade.addColorStop(0, C.surface); fade.addColorStop(1, 'rgba(21,21,23,0)');
-    ctx.fillStyle = fade; ctx.fillRect(W - P - 421, 248, 222, 164); }
-  await drawImgCover(ctx, card('leaders', ch.leader)?.i, P + 16, 262, 136, 136, 12);
-  const { name: cn, sub: cs } = splitLeader(ch.leader);
-  ctx.fillStyle = C.gold; ctx.font = `600 22px ${B}`; ctx.fillText(ps.playoff ? 'CHAMPION' : 'FIRST PLACE', P + 176, 300);
-  ctx.fillStyle = C.ink; ctx.font = `italic 800 50px ${D}`; ctx.fillText(fit(ctx, cn, 560), P + 176, 350);
-  const cnw = Math.min(ctx.measureText(cn).width, 560);
-  pipsAt(ctx, deckAspects(ch), P + 176 + cnw + 16, 333, 9);
-  ctx.fillStyle = C.muted; ctx.font = `500 24px ${B}`;
-  ctx.fillText(fit(ctx, `${ch.name}  ·  ${ch.base}  ·  ${ch.m.w}-${ch.m.l}-${ch.m.d}`, 600), P + 176, 386);
-
-  const y0 = 476;
-  genericInfo.clear();
-  if (deckMode) {
-    ctx.fillStyle = C.ink; ctx.font = `italic 800 32px ${D}`; ctx.fillText('TOP DECKS', P, y0);
-    ctx.fillStyle = C.muted; ctx.font = `500 18px ${B}`;
-    ctx.textAlign = 'right'; ctx.fillText('PLAYERS · WIN %', W - P, y0); ctx.textAlign = 'left';
-    const Dk = group(known, p => p.leader + '\u0000' + baseKey(p)).sort(sorter('count')).slice(0, 8);
-    const max = Math.max(...Dk.map(g => g.count), 1);
-    for (let i = 0; i < Dk.length; i++) {
-      const g = Dk[i], y = y0 + 22 + i * 62, [l, bk] = g.key.split('\u0000'), { name } = splitLeader(l);
-      await drawImgCover(ctx, card('leaders', l)?.i, P, y, 52, 52, 8);
-      await drawBase(ctx, bk, P + 60, y, 104, 52);
-      ctx.fillStyle = C.ink; ctx.font = `600 27px ${D}`; ctx.fillText(fit(ctx, name, 360), P + 180, y + 24);
-      const nw = Math.min(ctx.measureText(name).width, 360);
-      pipsAt(ctx, deckAspects(g.players[0]), P + 180 + nw + 10, y + 15, 7);
-      ctx.fillStyle = C.muted; ctx.font = `500 19px ${B}`; ctx.fillText(fit(ctx, bk, 400), P + 180, y + 48);
-      bar(ctx, 640, y + 20, 270, 12, g.cut / max, (g.count - g.cut) / max);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = C.ink; ctx.font = `600 26px ${M}`; ctx.fillText(String(g.count), W - P, y + 26);
-      ctx.fillStyle = g.mp >= MIN_WR_GAMES && g.wr >= .6 ? C.gold : C.muted; ctx.font = `400 17px ${M}`; ctx.fillText(g.mp ? pct(g.wr) : '–', W - P, y + 50);
-      ctx.textAlign = 'left';
-    }
-  } else {
-    const colL = P, colB = 600;
-    ctx.fillStyle = C.ink; ctx.font = `italic 800 32px ${D}`; ctx.fillText('LEADERS', colL, y0);
-    ctx.fillText('BASES', colB, y0);
-    ctx.fillStyle = C.muted; ctx.font = `500 18px ${B}`;
-    ctx.textAlign = 'right'; ctx.fillText('PLAYERS · WIN %', 560, y0); ctx.fillText('PLAYERS', W - P, y0); ctx.textAlign = 'left';
-    const L = group(known, p => p.leader).sort(sorter('count')).slice(0, 8);
-    const maxL = Math.max(...L.map(g => g.count), 1);
-    for (let i = 0; i < L.length; i++) {
-      const g = L[i], y = y0 + 22 + i * 62, { name } = splitLeader(g.key);
-      await drawImgCover(ctx, card('leaders', g.key)?.i, colL, y, 52, 52, 8);
-      ctx.fillStyle = C.ink; ctx.font = `600 27px ${D}`; ctx.fillText(fit(ctx, name, 250), colL + 66, y + 24);
-      const nw = Math.min(ctx.measureText(name).width, 250);
-      pipsAt(ctx, card('leaders', g.key)?.a || [], colL + 66 + nw + 10, y + 15, 7);
-      bar(ctx, colL + 66, y + 36, 300, 10, g.cut / maxL, (g.count - g.cut) / maxL);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = C.ink; ctx.font = `600 26px ${M}`; ctx.fillText(String(g.count), 560, y + 26);
-      ctx.fillStyle = g.mp >= MIN_WR_GAMES && g.wr >= .6 ? C.gold : C.muted; ctx.font = `400 17px ${M}`; ctx.fillText(g.mp ? pct(g.wr) : '–', 560, y + 50);
-      ctx.textAlign = 'left';
-    }
-    const Bs = group(known, baseKey).sort(sorter('count')).slice(0, 6);
-    const maxB = Math.max(...Bs.map(g => g.count), 1);
-    for (let i = 0; i < Bs.length; i++) {
-      const g = Bs[i], y = y0 + 22 + i * 85;
-      await drawBase(ctx, g.key, colB, y, 126, 50);
-      ctx.fillStyle = C.ink; ctx.font = `600 25px ${D}`; ctx.fillText(fit(ctx, g.key, 210), colB + 140, y + 22);
-      bar(ctx, colB + 140, y + 34, 200, 10, g.cut / maxB, (g.count - g.cut) / maxB);
-      pipsAt(ctx, baseLabel(g.key).pips, colB + 140, y + 62, 6);
-      ctx.textAlign = 'right'; ctx.fillStyle = C.ink; ctx.font = `600 26px ${M}`; ctx.fillText(String(g.count), W - P, y + 26);
-      ctx.fillStyle = C.muted; ctx.font = `400 17px ${M}`; ctx.fillText(pct(g.count / total), W - P, y + 50); ctx.textAlign = 'left';
-    }
-  }
-
-  // Top cut
-  const cut = ps.filter(p => p.cut).slice(0, 8);
-  let y = 1040;
-  if (cut.length) {
-    ctx.fillStyle = C.ink; ctx.font = `italic 800 32px ${D}`; ctx.fillText(`TOP ${cut.length}`, P, y);
-    const n = 8, gap = 14, w = (W - 2 * P - gap * (n - 1)) / n;
-    for (let i = 0; i < cut.length; i++) {
-      const p = cut[i], x = P + i * (w + gap);
-      await drawImgCover(ctx, card('leaders', p.leader)?.i, x, y + 18, w, w, 10);
-      if (p.rank === 1) { ctx.strokeStyle = C.gold; ctx.lineWidth = 3; rr(x, y + 18, w, w, 10, ctx); ctx.stroke(); }
-      ctx.fillStyle = p.rank === 1 ? C.gold : C.ink; ctx.font = `700 24px ${D}`; ctx.fillText(ord(p.rank), x, y + w + 46);
-      ctx.fillStyle = C.muted; ctx.font = `500 15px ${B}`; ctx.fillText(fit(ctx, splitLeader(p.leader).name, w), x, y + w + 68);
-    }
-    y += w + 98;
-  }
-
-  // Aspect share bar
-  const n = known.length || 1;
-  const shares = ASPECTS.map(a => [a, known.filter(p => deckAspects(p).includes(a)).length / n]).filter(s => s[1] > 0);
-  const sum = shares.reduce((t, s) => t + s[1], 0) || 1;
-  const by = Math.min(y + 6, H - 100);
-  ctx.fillStyle = C.muted; ctx.font = `600 17px ${B}`; ctx.fillText('ASPECTS · SHARE OF DECKS', P, by);
-  let x = P; const bw = W - 2 * P;
-  ctx.save(); rr(P, by + 12, bw, 22, 6, ctx); ctx.clip();
-  for (const [a, s] of shares) { const w = s / sum * bw; ctx.fillStyle = C.asp[a]; ctx.fillRect(x, by + 12, w, 22); x += w; }
-  ctx.restore();
-  x = P; ctx.font = `600 15px ${B}`;
-  for (const [a, s] of shares) {
-    const w = s / sum * bw, label = `${a.slice(0, 3).toUpperCase()} ${pct(s)}`;
-    if (ctx.measureText(label).width + 12 < w) { ctx.fillStyle = (a === 'Heroism' || a === 'Cunning') ? '#1d1f29' : '#f4f2ea'; ctx.fillText(label, x + 8, by + 29); }
-    x += w;
-  }
-
-  ctx.fillStyle = C.muted; ctx.font = `500 16px ${B}`;
-  ctx.fillText('BDST · Data: melee.gg standings · Card art © Lucasfilm Ltd. & FFG via swu-db.com', P, H - 26);
-  return cv;
-}
-
 let lastBlob = null, downloads = null;
-function shareHint() {
-  document.getElementById('share-msg').textContent = (state.imgFormat === 'wide' ? '1920 × 1080, sized for Discord, YouTube and Facebook.' : '1080 × 1350, sized for Instagram.') +
-    (state.imgFormat === 'tall' && state.imgView === 'bases' ? ' The summary always shows leaders and bases side by side.' : '') +
-    ' Right-click the image (or press and hold on a phone) to save it.';
-}
-async function refreshShot() {
-  const cv = await makeImage(); if (!cv) return false;
-  lastBlob = await new Promise(r => cv.toBlob(r, 'image/png'));
-  document.getElementById('shot').src = cv.toDataURL('image/png');
-  return true;
-}
 // Inside the claude.ai viewer, files are saved through the downloads capability; opened directly, a plain link works.
 window.claude?.use?.('downloads').then(d => { downloads = d; }).catch(() => {});
 async function openShare() {
-  const modal = document.getElementById('modal'), img = document.getElementById('shot'), msg = document.getElementById('share-msg');
-  state.imgView = state.view === 'decks' ? 'decks' : 'leaders';
-  setPressed('imgseg', 'img-' + state.imgView);
-  setPressed('fmtseg', 'fmt-' + state.imgFormat);
-  if (!(await refreshShot())) return;
+  const cv = await makeImage(); if (!cv) return;
+  lastBlob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  document.getElementById('shot').src = cv.toDataURL('image/png');
   let topLevel = false; try { topLevel = window.top === window.self; } catch (e) {}
   document.getElementById('dl').hidden = !(topLevel || downloads);
-  shareHint();
-  modal.hidden = false;
+  document.getElementById('share-msg').textContent = '1920 × 1080, sized for Discord, YouTube and Facebook. Right-click the image (or press and hold on a phone) to save it.';
+  document.getElementById('modal').hidden = false;
   document.getElementById('modal-close').focus();
 }
 
@@ -1150,24 +637,11 @@ input.addEventListener('change', () => { handleFiles(input.files); input.value =
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
 
-for (const [id, mode] of [['sort-count', 'count'], ['sort-wr', 'wr'], ['sort-cut', 'cut']]) {
-  document.getElementById(id).addEventListener('click', () => {
-    state.sort = mode;
-    setPressed('sortseg', id);
-    render();
-  });
-}
 function setPressed(groupId, id) {
   document.querySelectorAll(`#${groupId} button`).forEach(b => b.setAttribute('aria-pressed', b.id === id));
 }
-for (const [id, v] of [['view-split', 'split'], ['view-decks', 'decks']])
-  document.getElementById(id).addEventListener('click', () => { state.view = v; setPressed('viewseg', id); render(); });
 for (const [id, v] of [['gen-on', true], ['gen-off', false]])
   document.getElementById(id).addEventListener('click', () => { state.gen = v; setPressed('genseg', id); render(); });
-for (const [id, v] of [['img-leaders', 'leaders'], ['img-bases', 'bases'], ['img-decks', 'decks']])
-  document.getElementById(id).addEventListener('click', () => { state.imgView = v; setPressed('imgseg', id); shareHint(); refreshShot(); });
-for (const [id, v] of [['fmt-wide', 'wide'], ['fmt-tall', 'tall']])
-  document.getElementById(id).addEventListener('click', () => { state.imgFormat = v; setPressed('fmtseg', id); shareHint(); refreshShot(); });
 document.getElementById('evname').addEventListener('input', e => { if (!state.sample && state.tid) store(false, 'swu-ev-' + state.tid, e.target.value); });
 document.getElementById('share').addEventListener('click', openShare);
 document.getElementById('modal-close').addEventListener('click', () => { document.getElementById('modal').hidden = true; });
@@ -1183,7 +657,7 @@ document.getElementById('copy').addEventListener('click', async () => {
   }
 });
 document.getElementById('dl').addEventListener('click', async () => {
-  const name = (document.getElementById('evname').value.trim() || 'swu-meta').replace(/[^\w-]+/g, '-').toLowerCase() + '.png';
+  const name = (document.getElementById('evname').value.trim() || 'bdst-decks').replace(/[^\w-]+/g, '-').toLowerCase() + '.png';
   const msg = document.getElementById('share-msg');
   if (downloads) {
     try { await downloads.save({ filename: name, data: lastBlob }); msg.textContent = 'Saved ' + name + '.'; }
@@ -1196,7 +670,7 @@ document.getElementById('dl').addEventListener('click', async () => {
   a.click();
 });
 
-addRound(parseCSV(SAMPLE_CSV), true);
+addFile(parseCSV(SAMPLE_CSV), true);
 afterLoad();
 </script>
 </body>

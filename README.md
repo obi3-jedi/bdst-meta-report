@@ -1,15 +1,10 @@
 # BDST Meta Report
 
-A leader and base breakdown for Star Wars: Unlimited tournaments. Upload a melee.gg standings export (CSV or Excel) and the site shows:
+A deck breakdown for Star Wars: Unlimited tournaments. Upload a melee.gg standings export (CSV or Excel) and the site shows every deck (leader + base) with how many players ran it and its share of the field, plus a BDST-branded 1920×1080 graphic to share.
 
-- leader and base usage, win rates and top cut conversion, with card art
-- a Decks view that treats each leader + base combination as one deck
-- common bases named by colour (e.g. "Yoda Red", "Yoda Red Force", "Yoda Red Splash") since they're interchangeable, while rare bases like Data Vault keep their names
-- aspect breakdown (Heroism vs Villainy, and each aspect's share of the field and top cut)
-- the top cut
-- round-by-round leader win rates (upload one standings export per round)
-- every leader + base pairing
-- BDST-branded images to share: a 1920×1080 standings graphic (framed table plus a ring of card art sized by share) for leaders, bases or decks, and a 1080×1350 summary for Instagram
+Common bases are named by colour since they're interchangeable: "Yoda Red" is Yoda on any plain 30 HP Aggression base, "Yoda Red Force" on any Aggression Force base. Rare bases like Data Vault keep their names.
+
+The fuller report (leader and base boards, aspects, top cut, round-by-round, pairings and win rates) is saved at the `full-report-v1` git tag, ready to bring back.
 
 Everything runs in the browser. Uploaded files never leave your computer.
 
@@ -17,7 +12,7 @@ Everything runs in the browser. Uploaded files never leave your computer.
 
 - `index.html`: the whole app
 - `cards.js`: leader and base names, aspects, art thumbnails and generic-base families from [swu-db.com](https://swu-db.com)
-- `art/`: larger art crops, loaded only when an image is generated
+- `art/`: larger leader art, loaded only when an image is generated
 - `bdst-logo.png`, `bdst-icon.png`: branding
 - `tools/build_cards.py`: rebuilds `cards.js` and `art/` when new sets release
 
