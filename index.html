@@ -437,7 +437,8 @@ async function handleFiles(list) {
 }
 
 // ---------- share image (16:9): framed table on the left, art ring on the right ----------
-const C = { red: '#ff1418', white: '#f4f1f1', soft: '#d9b9ba' };
+const C = { red: '#ff1418', white: '#f4f1f1', soft: '#d9b9ba',
+  asp: { Vigilance: '#4f8fe0', Command: '#3fae5e', Aggression: '#e8603f', Cunning: '#e6b93a', Heroism: '#ece8da', Villainy: '#1b1b1f' } };
 const imgCache = new Map();
 function loadImg(src) {
   if (!src) return Promise.resolve(null);
@@ -461,6 +462,10 @@ function blurred(im, w, h) {
   const s = document.createElement('canvas'); s.width = Math.max(1, Math.round(w / 14)); s.height = Math.max(1, Math.round(h / 14));
   drawCover(s.getContext('2d'), im, 0, 0, s.width, s.height, .3);
   return s;
+}
+async function baseArt(name) {
+  const c = card('bases', name);
+  return (c?.h && await loadImg(c.h)) || (c?.i && await loadImg(c.i)) || null;
 }
 async function leaderArt(name) {
   const c = card('leaders', name);
@@ -563,35 +568,73 @@ async function makeImage() {
   const sum = ring.reduce((s, g) => s + g.count, 0) || 1;
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 40;
   ctx.beginPath(); ctx.arc(cx, cy, r1 + 14, 0, Math.PI * 2); ctx.fillStyle = '#0b0405'; ctx.fill(); ctx.restore();
+  // Each wedge has two bands: the leader's art outside, the base inside (its art, or its aspect colour for a colour group).
+  const rb = r0 + 64;
+  const sectorBox = (ra, rz, a0, a1, min) => {
+    const pts = [];
+    for (let k = 0; k <= 24; k++) { const t = a0 + (a1 - a0) * k / 24; pts.push([cx + rz * Math.cos(t), cy + rz * Math.sin(t)], [cx + ra * Math.cos(t), cy + ra * Math.sin(t)]); }
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    let x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+    if (w < min) { x -= (min - w) / 2; w = min; }
+    if (h < min) { y -= (min - h) / 2; h = min; }
+    return { x, y, w, h };
+  };
   let a = -Math.PI / 2;
-  const marks = [];
+  const marks = [], bands = [];
   for (let i = 0; i < ring.length; i++) {
     const g = ring[i], a1 = a + g.count / sum * Math.PI * 2;
-    ctx.save(); sectorPath(ctx, cx, cy, r0, r1, a, a1); ctx.clip();
-    const im = g.other ? null : await leaderArt(g.leader);
-    const pts = [];
-    for (let k = 0; k <= 24; k++) { const t = a + (a1 - a) * k / 24; pts.push([cx + r1 * Math.cos(t), cy + r1 * Math.sin(t)], [cx + r0 * Math.cos(t), cy + r0 * Math.sin(t)]); }
-    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
-    let bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
-    if (bw < 220) { bx -= (220 - bw) / 2; bw = 220; }
-    if (bh < 220) { by -= (220 - bh) / 2; bh = 220; }
-    if (im) drawCover(ctx, im, bx, by, bw, bh, .25);
-    else { ctx.fillStyle = '#3a0d10'; ctx.fillRect(bx, by, bw, bh); }
+    ctx.save(); sectorPath(ctx, cx, cy, rb, r1, a, a1); ctx.clip();
+    const im = g.other ? null : await leaderArt(g.leader), lb = sectorBox(rb, r1, a, a1, 220);
+    if (im) drawCover(ctx, im, lb.x, lb.y, lb.w, lb.h, .25);
+    else { ctx.fillStyle = '#3a0d10'; ctx.fillRect(lb.x, lb.y, lb.w, lb.h); }
     ctx.restore();
-    if (!g.other && g.count / sum >= .035) marks.push([(a + a1) / 2, i + 1]);
+    ctx.save(); sectorPath(ctx, cx, cy, r0, rb, a, a1); ctx.clip();
+    const gi = g.other ? null : genericInfo.get(g.base), bb = sectorBox(r0, rb, a, a1, 140);
+    const bi = g.other || gi ? null : await baseArt(g.base);
+    if (gi) ctx.fillStyle = C.asp[gi.aspect];
+    else if (bi) { drawCover(ctx, bi, bb.x, bb.y, bb.w, bb.h, .5); ctx.fillStyle = 'rgba(0,0,0,.28)'; }
+    else ctx.fillStyle = '#2a0a0c';
+    ctx.fillRect(bb.x, bb.y, bb.w, bb.h);
+    ctx.restore();
+    if (!g.other) {
+      bands.push({ a, a1, label: g.base.toUpperCase(), dark: gi && (gi.aspect === 'Cunning' || gi.aspect === 'Heroism') });
+      if (g.count / sum >= .035) marks.push([(a + a1) / 2, pct(g.count / n)]);
+    }
     a = a1;
   }
   ctx.strokeStyle = '#0b0405'; ctx.lineWidth = 5; ctx.beginPath();
   a = -Math.PI / 2;
   for (const g of ring) { ctx.moveTo(cx + r0 * Math.cos(a), cy + r0 * Math.sin(a)); ctx.lineTo(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a)); a += g.count / sum * Math.PI * 2; }
   ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, rb, 0, Math.PI * 2); ctx.lineWidth = 4; ctx.stroke();
   ctx.beginPath(); ctx.arc(cx, cy, r1 + 10, 0, Math.PI * 2); ctx.strokeStyle = C.red; ctx.lineWidth = 6; ctx.stroke();
-  for (const [m, num] of marks) {
-    const mx = cx + (r1 - 36) * Math.cos(m), my = cy + (r1 - 36) * Math.sin(m);
-    ctx.beginPath(); ctx.arc(mx, my, 21, 0, Math.PI * 2); ctx.fillStyle = 'rgba(11,4,5,.88)'; ctx.fill();
-    ctx.lineWidth = 2.5; ctx.strokeStyle = C.red; ctx.stroke();
-    ctx.fillStyle = C.white; ctx.font = `700 19px ${M}`; ctx.textAlign = 'center'; ctx.fillText(String(num).padStart(2, '0'), mx, my + 7);
+
+  // Base names along the inner band, wherever the wedge is wide enough to fit them
+  const rm = (r0 + rb) / 2;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const b of bands) {
+    const m = (b.a + b.a1) / 2, room = rm * (b.a1 - b.a) - 12;
+    let fsz = 17; ctx.font = `700 ${fsz}px ${D}`;
+    while (fsz > 11 && ctx.measureText(b.label).width > room) { fsz--; ctx.font = `700 ${fsz}px ${D}`; }
+    if (ctx.measureText(b.label).width > room) continue;
+    ctx.save();
+    ctx.translate(cx + rm * Math.cos(m), cy + rm * Math.sin(m));
+    ctx.rotate(Math.sin(m) > 0 ? m - Math.PI / 2 : m + Math.PI / 2);
+    if (!b.dark) { ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.strokeText(b.label, 0, 1); }
+    ctx.fillStyle = b.dark ? '#141414' : '#ffffff'; ctx.fillText(b.label, 0, 1);
+    ctx.restore();
   }
+
+  // Share badges on the leader band
+  for (const [m, share] of marks) {
+    const mx = cx + (r1 - 38) * Math.cos(m), my = cy + (r1 - 38) * Math.sin(m);
+    ctx.beginPath(); ctx.arc(mx, my, 26, 0, Math.PI * 2); ctx.fillStyle = 'rgba(11,4,5,.9)'; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = C.red; ctx.stroke();
+    ctx.fillStyle = C.white; ctx.font = `700 17px ${M}`; ctx.fillText(share, mx, my + 1);
+  }
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `600 17px ${B}`; ctx.fillStyle = C.soft;
+  ctx.fillText('OUTER RING: LEADER   ·   INNER RING: BASE', cx, cy + r1 + 46);
 
   // Centre
   const cg = ctx.createRadialGradient(cx, cy - 60, 20, cx, cy, r0);
