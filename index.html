@@ -192,6 +192,31 @@ table.st tr.dropped td { opacity: .5; }
 .champ span { font-size: 13px; color: var(--muted); }
 @media (max-width: 760px) { .bracket { grid-template-columns: minmax(0, 1fr); } }
 
+/* Player match history */
+.plink { background: none; border: 0; padding: 0; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.plink:hover { text-decoration-color: var(--red); }
+.phead { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; }
+.phead .thumb { width: 64px; height: 64px; }
+.phead b { display: block; font: italic 800 28px/1.05 var(--f-display); text-transform: uppercase; }
+.phead span { font-size: 14px; color: var(--muted); }
+.phead .rec { font: 600 14px var(--f-data); color: var(--red); }
+.hist { list-style: none; margin: 0; padding: 0; display: grid; }
+.hist li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.hist .rnd { font: 600 12px/1.2 var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hist .opp { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.hist .opp .thumb { width: 36px; height: 36px; }
+.hist .opp .bthumb { width: 52px; height: 20px; }
+.hist .opp > div { min-width: 0; display: grid; gap: 2px; }
+.hist .opp .plink { font: 600 17px/1.1 var(--f-display); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist .opp small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist .none { color: var(--muted); font-style: italic; }
+.res { font: 700 13px/1 var(--f-data); padding: 6px 8px; border-radius: 6px; white-space: nowrap; text-align: center; min-width: 4.6rem; }
+.res.W { background: var(--red); color: #fff; }
+.res.L { background: rgba(255, 255, 255, .08); color: var(--muted); }
+.res.D { background: rgba(255, 255, 255, .18); color: var(--ink); }
+.res.P { border: 1px dashed var(--line); color: var(--muted); }
+@media (max-width: 480px) { .hist li { grid-template-columns: minmax(0, 1fr) auto; } .hist .rnd { grid-column: 1 / -1; } }
+
 /* Share modal */
 .modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; z-index: 10; }
 .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; width: min(920px, 100%); max-height: calc(100% - 32px); overflow: auto; }
@@ -282,6 +307,14 @@ table.st tr.dropped td { opacity: .5; }
   </section>
 
   <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted decklist aren’t counted in the breakdown. Share is each deck’s percentage of players with a decklist. If a file holds several rounds, the latest round is used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
+</div>
+
+<div class="modal" id="player-modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="player-title" style="width:min(640px,100%)">
+    <div class="hdr"><h3 id="player-title">Match history</h3><button type="button" class="x" id="player-close" aria-label="Close">×</button></div>
+    <div class="phead" id="player-head"></div>
+    <ul class="hist" id="player-hist"></ul>
+  </div>
 </div>
 
 <div class="modal" id="modal" hidden>
@@ -557,7 +590,7 @@ function renderStandings(ps, decks) {
     const find = `${p.name} ${g ? g.label : ''}`.toLowerCase();
     return `<tr class="${dropped ? 'dropped' : ''}" data-find="${esc(find)}">
       <td class="rk">${p.rank}</td>
-      <td class="pl">${esc(p.name)}${dropped ? '<span class="tag">Dropped</span>' : ''}</td>
+      <td class="pl"><button class="plink" type="button" data-player="${esc(p.id)}">${esc(p.name)}</button>${dropped ? '<span class="tag">Dropped</span>' : ''}</td>
       <td class="rec">${esc(p.record)}</td>
       <td class="pts r">${p.points ?? ''}</td>
       <td>${deck}</td></tr>`;
@@ -719,6 +752,43 @@ function renderBracket() {
   el.innerHTML = cols;
 }
 
+// ---------- player match history ----------
+function historyOf(id) {
+  return (state.live?.history || []).map(r => {
+    const m = r.matches.find(m => m.players.some(p => String(p.playerId) === id));
+    if (!m) return { round: r.name, none: true };
+    const me = m.players.find(p => String(p.playerId) === id), opp = m.players.find(p => String(p.playerId) !== id) || null;
+    if (!opp) return { round: r.name, bye: true };
+    const done = m.hasResult;
+    const res = !done ? 'P' : me.gameWins > opp.gameWins ? 'W' : me.gameWins < opp.gameWins ? 'L' : 'D';
+    return { round: r.name, opp: { id: String(opp.playerId), name: opp.name }, res, score: done ? `${me.gameWins}-${opp.gameWins}` : '' };
+  });
+}
+
+function openPlayer(id) {
+  const p = currentPlayers().find(x => x.id === id) || withDecks((state.live?.swiss?.players || []).filter(x => String(x.playerId) === id))[0];
+  const name = p?.name || (state.live?.history || []).flatMap(r => r.matches).flatMap(m => m.players).find(x => String(x.playerId) === id)?.name || 'Player';
+  const d = entrantDeck({ id, name });
+  document.getElementById('player-title').textContent = 'Match history';
+  document.getElementById('player-head').innerHTML = `${d ? leaderImg(d.leader) : '<span class="thumb" aria-hidden="true"></span>'}
+    <div><b>${esc(name)}</b><span>${d ? esc(d.label) : 'No decklist'}</span><br>
+    <span class="rec">${p ? `#${p.rank}  ·  ${esc(p.record)}${p.points != null ? `  ·  ${p.points} pts` : ''}` : ''}</span>${p && /drop/i.test(p.status) ? '<span class="tag">Dropped</span>' : ''}</div>`;
+  const label = { W: 'Win', L: 'Loss', D: 'Draw', P: 'Playing now' };
+  const rows = historyOf(id).map(h => {
+    if (h.none) return `<li><span class="rnd">${esc(h.round)}</span><span class="none">No match</span><span></span></li>`;
+    if (h.bye) return `<li><span class="rnd">${esc(h.round)}</span><span class="none">Bye</span><span class="res W">Bye</span></li>`;
+    const od = entrantDeck(h.opp);
+    return `<li><span class="rnd">${esc(h.round)}</span>
+      <div class="opp"><span class="pair">${od ? leaderImg(od.leader) + baseImg(od.base) : '<span class="thumb" aria-hidden="true"></span>'}</span>
+        <div><button class="plink" type="button" data-player="${esc(h.opp.id)}">${esc(h.opp.name)}</button><small>${od ? esc(od.label) : 'No decklist'}</small></div></div>
+      <span class="res ${h.res}">${label[h.res]}${h.score ? ' ' + h.score : ''}</span></li>`;
+  }).join('');
+  document.getElementById('player-hist').innerHTML = rows || '<li><span></span><span class="none">No rounds played yet.</span><span></span></li>';
+  const modal = document.getElementById('player-modal');
+  modal.hidden = false;
+  document.getElementById('player-close').focus();
+}
+
 // ---------- live following ----------
 async function relay(path) {
   let res;
@@ -769,8 +839,14 @@ async function refreshLive() {
     const done = t.rounds.filter(r => r.completed);
     const last = done[done.length - 1];
     const current = t.rounds.find(r => r.started && !r.completed);
-    const players = last ? (await relay('/standings/' + last.id)).players : [];
-    state.live = { id: String(tid), name: t.name, round: last?.name || null, current: current?.name || null, players, updated: new Date() };
+    const started = t.rounds.filter(r => r.started);
+    const [players, ...roundMatches] = await Promise.all([
+      last ? relay('/standings/' + last.id).then(s => s.players) : [],
+      ...started.map(r => relay('/matches/' + r.id).then(m => m.matches)),
+    ]);
+    const matchesOf = new Map(started.map((r, i) => [r.id, roundMatches[i]]));
+    state.live = { id: String(tid), name: t.name, round: last?.name || null, current: current?.name || null, players, updated: new Date(),
+      history: started.map(r => ({ name: r.name, completed: r.completed, matches: matchesOf.get(r.id) })) };
     // Top cut: seeds come from the last completed Swiss round; playoff rounds are everything after the Swiss rounds.
     const isSwiss = r => /^round\s*\d+$/i.test(r.name);
     const swiss = t.rounds.filter(isSwiss), playoff = t.rounds.filter(r => !isSwiss(r));
@@ -779,7 +855,7 @@ async function refreshLive() {
       const seeds = lastSwiss.id === last?.id ? players : (await relay('/standings/' + lastSwiss.id)).players;
       state.live.swiss = { round: lastSwiss.name, players: seeds };
       const proundsData = [];
-      for (const r of playoff) proundsData.push({ name: r.name, matches: r.started ? (await relay('/matches/' + r.id)).matches : [] });
+      for (const r of playoff) proundsData.push({ name: r.name, matches: matchesOf.get(r.id) || [] });
       state.live.bracket = buildBracket(seeds, proundsData, swiss.every(r => r.completed), lastSwiss.name);
     }
     // Use decklists uploaded earlier for this tournament if the current file is for a different one.
@@ -1458,7 +1534,14 @@ for (const [id, v] of [['fmt-wide', 'wide'], ['fmt-tall', 'tall']])
   document.getElementById(id).addEventListener('click', () => { state.format = v; setPressed('fmtseg', id); shareHint(); refreshShot(); });
 document.getElementById('modal-close').addEventListener('click', () => { document.getElementById('modal').hidden = true; });
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') e.target.hidden = true; });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('modal').hidden = true; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { document.getElementById('modal').hidden = true; document.getElementById('player-modal').hidden = true; } });
+// Player names (in standings and inside the popup) open that player's match history
+document.addEventListener('click', e => {
+  const b = e.target.closest('.plink[data-player]');
+  if (b) openPlayer(b.dataset.player);
+});
+document.getElementById('player-close').addEventListener('click', () => { document.getElementById('player-modal').hidden = true; });
+document.getElementById('player-modal').addEventListener('click', e => { if (e.target.id === 'player-modal') e.target.hidden = true; });
 document.getElementById('copy').addEventListener('click', async () => {
   const msg = document.getElementById('share-msg');
   try {
