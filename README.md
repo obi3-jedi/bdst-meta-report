@@ -4,7 +4,7 @@ A leader and base breakdown for Star Wars: Unlimited tournaments. Upload a melee
 
 - leader and base usage, win rates and top cut conversion, with card art
 - a Decks view that treats each leader + base combination as one deck
-- common bases grouped by colour (e.g. "Red Force", "Blue 30 HP", "Green Splash") since they're interchangeable, while rare bases like Data Vault keep their names
+- common bases named by colour (e.g. "Yoda Red", "Yoda Red Force", "Yoda Red Splash") since they're interchangeable, while rare bases like Data Vault keep their names
 - aspect breakdown (Heroism vs Villainy, and each aspect's share of the field and top cut)
 - the top cut
 - round-by-round leader win rates (upload one standings export per round)

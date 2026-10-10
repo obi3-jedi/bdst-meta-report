@@ -264,7 +264,7 @@ td .sub { color: var(--muted); font-size: 12px; }
         <button type="button" id="view-decks" aria-pressed="false">Decks</button>
       </div>
       <div class="seg" role="group" aria-label="Common bases" id="genseg">
-        <button type="button" id="gen-on" aria-pressed="true" title="Group interchangeable common bases by colour, e.g. Red Force">Commons by colour</button>
+        <button type="button" id="gen-on" aria-pressed="true" title="Name common bases by colour: Red, Red Force, Red Splash">Commons by colour</button>
         <button type="button" id="gen-off" aria-pressed="false">Bases by name</button>
       </div>
       <div class="seg" role="group" aria-label="Sort boards" id="sortseg">
@@ -301,7 +301,7 @@ td .sub { color: var(--muted); font-size: 12px; }
     <div class="tbl-wrap"><table id="pairs"></table></div>
   </section>
 
-  <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted list are grouped as Unknown. Common bases are interchangeable within a colour, so by default they are grouped: “Red Force” is any Aggression Force base (28 HP), “Blue 30 HP” any plain Vigilance base, and “Splash” the 27 HP bases that ignore an aspect. Rare bases such as Data Vault keep their names. Top cut is read from playoff status (Active or Eliminated); without a playoff phase the top 8 by rank are used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
+  <p class="foot">Decks are read from the decklist name (“Leader, Subtitle - Base”). Players without a submitted list are grouped as Unknown. Common bases are interchangeable within a colour, so by default they go by colour: “Red” is any plain 30 HP Aggression base, “Red Force” any Aggression Force base (28 HP), and “Red Splash” any 27 HP Aggression base that ignores an aspect. A deck reads “Yoda Red Force”. Rare bases such as Data Vault keep their names. Top cut is read from playoff status (Active or Eliminated); without a playoff phase the top 8 by rank are used. Aspects and card art come from swu-db.com; card art © Lucasfilm Ltd. and Fantasy Flight Games. Your files are processed in your browser and never uploaded anywhere.</p>
 </div>
 
 <div class="modal" id="modal" hidden>
@@ -377,11 +377,14 @@ function baseKey(p) {
   if (!state.gen) return p.base;
   const c = card('bases', p.base), asp = c?.a?.[0];
   if (!c?.g || !COLOR[asp]) return p.base;
-  const key = `${COLOR[asp]} ${c.g}`;
+  // Plain commons are just their colour ("Red"); commons with a shared ability add it ("Red Force", "Red Splash").
+  const key = /HP$/.test(c.g) ? COLOR[asp] : `${COLOR[asp]} ${c.g}`;
   if (!genericInfo.has(key)) genericInfo.set(key, { aspect: asp, fam: c.g, names: new Set() });
   genericInfo.get(key).names.add(p.base);
   return key;
 }
+// "Yoda Red Force" for colour groups, "Luke Skywalker · Data Vault" for named bases.
+const deckName = (leader, bk) => genericInfo.has(bk) ? `${leader} ${bk}` : `${leader} · ${bk}`;
 function baseLabel(key) {
   const gi = genericInfo.get(key);
   if (gi) return { pips: [gi.aspect], sub: [...gi.names].join(', ') };
@@ -770,13 +773,19 @@ function wideData(known) {
   const mode = state.imgView;
   const keyFn = mode === 'bases' ? baseKey : mode === 'decks' ? (p => p.leader + '\u0000' + baseKey(p)) : (p => p.leader);
   const groups = group(known, keyFn).sort(sorter('count'));
-  const short = new Map();
-  for (const p of known) { const n = splitLeader(p.leader).name; short.set(n, (short.get(n) || new Set()).add(p.leader)); }
-  const leaderName = l => short.get(splitLeader(l).name)?.size > 1 ? l : splitLeader(l).name;
+  // Use the short leader name ("Han Solo") unless two rows would then read the same.
+  const make = (g, full) => {
+    if (mode === 'bases') return g.key;
+    const [l, b] = g.key.split('\u0000');
+    const n = full ? l : splitLeader(l).name;
+    return mode === 'decks' ? deckName(n, b) : n;
+  };
+  const seen = new Map();
+  for (const g of groups) { g.label = make(g, false); seen.set(g.label, (seen.get(g.label) || 0) + 1); }
   for (const g of groups) {
-    if (mode === 'bases') { g.label = g.key; g.art = { kind: 'bases', key: g.key }; }
-    else if (mode === 'decks') { const [l, b] = g.key.split('\u0000'); g.label = `${leaderName(l)} · ${b}`; g.art = { kind: 'leaders', key: l }; }
-    else { g.label = leaderName(g.key); g.art = { kind: 'leaders', key: g.key }; }
+    if (seen.get(g.label) > 1) g.label = make(g, true);
+    const [l] = g.key.split('\u0000');
+    g.art = mode === 'bases' ? { kind: 'bases', key: g.key } : { kind: 'leaders', key: l };
   }
   return groups;
 }
@@ -941,7 +950,7 @@ async function makeWide() {
   ctx.fillText({ leaders: 'LEADER BREAKDOWN', bases: 'BASE BREAKDOWN', decks: 'DECK BREAKDOWN' }[mode], cx, cy + 72);
   ctx.font = `600 20px ${B}`; ctx.fillStyle = SOFT;
   const ch = ps[0];
-  ctx.fillText(fit(ctx, `${ps.playoff ? 'CHAMPION' : 'FIRST'}: ${splitLeader(ch.leader).name.toUpperCase()} · ${baseKey(ch).toUpperCase()}`, 380), cx, cy + 114);
+  ctx.fillText(fit(ctx, `${ps.playoff ? 'CHAMPION' : 'FIRST'}: ${deckName(splitLeader(ch.leader).name, baseKey(ch)).toUpperCase()}`, 380), cx, cy + 114);
 
   ctx.textAlign = 'right'; ctx.font = `500 15px ${B}`; ctx.fillStyle = SOFT;
   ctx.fillText('*Percentages are rounded so may not add to 100%  ·  Data: melee.gg  ·  Card art © Lucasfilm Ltd. & FFG via swu-db.com', W - 40, H - 22);
