@@ -565,8 +565,9 @@ async function makeImage() {
   // Art ring: one wedge per deck, sized by share, filled with its leader's art
   const cx = 1450, cy = 556, r1 = 430, r0 = 238;
   // Only decks with at least 5% of the field get their own wedge; the rest share one plain "Other" wedge so sizes stay true.
-  const RING_MIN = .05;
-  const big = groups.filter(g => g.count / n >= RING_MIN), small = groups.filter(g => g.count / n < RING_MIN);
+  // Compare the rounded share, so a deck shown as "5%" in the table (e.g. 2 of 44) makes the cut.
+  const RING_MIN = 5, inRing = g => Math.round(g.count / n * 100) >= RING_MIN;
+  const big = groups.filter(inRing), small = groups.filter(g => !inRing(g));
   const ring = small.length ? [...big, { other: true, count: small.reduce((s, g) => s + g.count, 0) }] : big;
   const sum = ring.reduce((s, g) => s + g.count, 0) || 1;
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 40;
