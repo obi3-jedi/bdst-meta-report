@@ -16,6 +16,8 @@
 //   PUT /archive/:tid        (organiser) { id, name, date, players: [...], top8: [...], champion }
 //   DELETE /archive/:tid     (organiser)
 //   GET /admin/check         (organiser) -> { ok: true } when the passcode is right
+//   GET /hri/teams           -> { teams: [{ slug, name, abbreviation, members, rating, logo }] } from hri.gg (cached 1 h)
+//   GET /hri/teams/:slug     -> { slug, name, abbreviation, logo, links, roster: [{ username, displayName, rating, tier, membership }] } (cached 15 min)
 //   GET /feature/:tid        -> { tid, table, player, updated } which match the stream overlay features
 //   PUT /feature/:tid        (organiser) { table } or { player }, optionally { round } to pin a past round
 //                            (or {} to go back to the overlay link's table)
@@ -205,6 +207,43 @@ async function storage(request, env, path, origin) {
   return null;
 }
 
+// ---------- hri.gg (Holocron Rating Index) teams ----------
+// hri.gg's public API doesn't allow browser requests from other sites and allows 30 requests a minute,
+// so the relay fetches it and caches the answers at the edge.
+const HRI = 'https://hri.gg/api/v1';
+async function hriCached(url, ttl) {
+  const cache = caches.default, key = new Request(url);
+  const hit = await cache.match(key);
+  if (hit) return hit.json();
+  const res = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': 'BDST-Meta-Report (bdst-melee-relay)' } });
+  if (res.status === 404) throw Object.assign(new Error('That team isn’t on hri.gg.'), { status: 404 });
+  if (!res.ok) throw new Error(`hri.gg answered with an error (${res.status}).`);
+  const body = await res.json();
+  await cache.put(key, new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` } }));
+  return body;
+}
+async function hriTeams() {
+  const teams = [];
+  for (let page = 1; page <= 5; page++) {
+    const body = await hriCached(`${HRI}/teams?per_page=100&page=${page}`, 3600);
+    for (const t of body.data || []) {
+      const a = t.attributes || {};
+      teams.push({ slug: a.slug, name: a.name, abbreviation: a.abbreviation, members: a.member_count, rating: a.avg_overall_rating, logo: a.logo_url_thumbnail });
+    }
+    if (teams.length >= (body.meta?.total_count || 0)) break;
+  }
+  return { teams };
+}
+async function hriTeam(slug) {
+  const body = await hriCached(`${HRI}/teams/${encodeURIComponent(slug)}`, 900);
+  const a = body.data?.attributes || {};
+  return {
+    slug: a.slug, name: a.name, abbreviation: a.abbreviation, logo: a.logo_url_display || a.logo_url_thumbnail,
+    links: (a.links || []).map(l => ({ kind: l.kind, label: l.label, url: l.url })),
+    roster: (a.current_roster || []).map(m => ({ username: m.melee_id || m.slug, displayName: m.melee_username, slug: m.slug, rating: m.rating, tier: m.current_tier, membership: m.membership_tier })),
+  };
+}
+
 // One tiny Durable Object per tournament holding the feature match choice.
 export class FeatureMatch {
   constructor(ctx) { this.ctx = ctx; }
@@ -242,6 +281,9 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors(origin) });
     const path = new URL(request.url).pathname;
     try {
+      if (path === '/hri/teams') return json(await hriTeams(), 200, origin, 600);
+      const ht = path.match(/^\/hri\/teams\/([a-z0-9-]{1,40})$/i);
+      if (ht) return json(await hriTeam(ht[1].toLowerCase()), 200, origin, 300);
       const fm = path.match(/^\/feature\/(\d{1,9})$/);
       if (fm) return await feature(request, env, fm[1], origin);
       if (/^\/(decks|archive|admin)(\/|$)/.test(path)) {

@@ -507,3 +507,13 @@ body.overlay #app, body.overlay .modal, body.overlay .toast { display: none !imp
 .team-cards { grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); }
 .pilots { grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
 .brand { min-width: 0; flex-wrap: wrap; }
+.team-head { display: flex; align-items: center; gap: 14px; }
+.team-head img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--surface); }
+.team-head b { display: block; font: italic 800 26px/1.05 var(--f-display); text-transform: uppercase; }
+.team-head span { font-size: 13px; color: var(--muted); }
+.team-head a { color: var(--ink); }
+.tcard .hri { font: 600 12px var(--f-data); color: var(--cun); }
+#team-pick { max-width: min(24rem, calc(100vw - 110px)); min-width: 0; }
+.hint a { color: var(--ink); }
+.selectl { max-width: 100%; min-width: 0; flex-wrap: wrap; }
+.selectl select, .selectl input { min-width: 0; max-width: min(24rem, calc(100vw - 110px)); text-overflow: ellipsis; }

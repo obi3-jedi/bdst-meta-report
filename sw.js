@@ -2,7 +2,7 @@
 // Page, styles and scripts: always fetched fresh when online (so updates show straight away), cached for offline use.
 // Card data and art: served from cache, refreshed in the background (large and rarely change).
 // Live data from the relay, fonts and CDN scripts are never cached here.
-const SHELL = 'bdst-shell-v14', ART = 'bdst-art-v1';
+const SHELL = 'bdst-shell-v15', ART = 'bdst-art-v1';
 const FILES = ['./', 'index.html', 'css/app.css', 'js/core.js', 'js/data.js', 'js/images.js', 'js/ui.js', 'js/overlay.js', 'js/sample.js', 'cards.js', 'bdst-logo.png', 'bdst-icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });

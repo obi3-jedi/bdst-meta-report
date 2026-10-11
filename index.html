@@ -183,8 +183,9 @@
         <div class="sec-head"><span class="sec-title">Team</span><small class="sec-meta" id="team-meta"></small>
           <button class="btn ghost sm" type="button" data-image="team">Make image</button></div>
         <div class="controls">
-          <label class="selectl">Team tag <input id="team-tag" type="text" maxlength="20" placeholder="BDST" autocomplete="off"></label>
-          <span class="hint">Anyone whose name includes the tag counts as a team member and is highlighted in pairings and standings.</span>
+          <label class="selectl">Team <select id="team-pick"></select></label>
+          <label class="selectl" id="team-tag-wrap" hidden>Tag <input id="team-tag" type="text" maxlength="20" placeholder="BDST" autocomplete="off"></label>
+          <span class="hint">Teams come from <a href="https://hri.gg/teams" target="_blank" rel="noopener">hri.gg</a> and are matched by their roster. With a custom tag, anyone whose name includes it counts. Team players are highlighted in pairings, standings and the top 8 race.</span>
         </div>
         <div id="team-body"></div>
       </section>

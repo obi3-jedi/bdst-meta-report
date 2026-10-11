@@ -61,7 +61,7 @@ function withDecks(livePlayers) {
   return (livePlayers || []).map(lp => {
     const d = idx && (idx.byId.get(String(lp.playerId)) || idx.byName.get(String(lp.name).toLowerCase()) || idx.byName.get(String(lp.username || '').toLowerCase()));
     return {
-      rank: lp.rank, id: String(lp.playerId), name: lp.name, record: lp.record, points: lp.points, status: lp.status,
+      rank: lp.rank, id: String(lp.playerId), name: lp.name, username: lp.username || '', record: lp.record, points: lp.points, status: lp.status,
       leader: d ? d.leader : 'Unknown', base: d ? d.base : 'Unknown', known: !!(d && d.known), matched: !!d, deckId: d?.deckId || '',
     };
   });
@@ -255,11 +255,47 @@ function computeRecap() {
 }
 
 // ---------- team ----------
-const teamTag = () => store(true, 'bdst-team') || 'BDST';
-function isTeam(name, tag = teamTag()) { return !!tag && String(name).toLowerCase().includes(tag.toLowerCase()); }
+// The team is either an hri.gg team (matched by its roster's melee.gg usernames and display names) or a custom
+// name tag (anyone whose name includes it). Stored as "hri:<slug>" or "tag:<text>"; BDST Gaming by default.
+function teamSource() {
+  const raw = store(true, 'bdst-team-src') || (store(true, 'bdst-team') ? 'tag:' + store(true, 'bdst-team') : 'hri:bdst');
+  const i = raw.indexOf(':');
+  return { type: raw.slice(0, i), value: raw.slice(i + 1) };
+}
+const hriTeamCache = new Map();
+async function loadHriTeam(slug) {
+  if (!hriTeamCache.has(slug)) hriTeamCache.set(slug, relay('/hri/teams/' + slug).catch(e => { hriTeamCache.delete(slug); throw e; }));
+  return hriTeamCache.get(slug);
+}
+let hriTeamList = null;
+async function loadHriTeams() { if (!hriTeamList) hriTeamList = relay('/hri/teams').then(d => d.teams).catch(e => { hriTeamList = null; throw e; }); return hriTeamList; }
+
+// The team's short name for images and labels: the hri.gg abbreviation, or the custom tag.
+function teamTag() {
+  const src = teamSource();
+  return src.type === 'hri' ? (state.hriTeam?.slug === src.value ? state.hriTeam.abbreviation : src.value.toUpperCase()) : src.value;
+}
+// Whether a player ({ id, name, username? }) is on the team.
+function isTeam(p) {
+  if (!p) return false;
+  const src = teamSource();
+  if (src.type === 'hri') {
+    const team = state.hriTeam?.slug === src.value ? state.hriTeam : null;
+    if (!team) return false;
+    if (!team._keys) team._keys = new Set(team.roster.flatMap(m => [m.username, m.displayName, m.slug]).filter(Boolean).map(s => String(s).toLowerCase()));
+    const username = p.username || (p.id && currentPlayers().find(x => x.id === String(p.id))?.username) || '';
+    return [p.name, username].some(s => s && team._keys.has(String(s).toLowerCase()));
+  }
+  return !!src.value && String(p.name || '').toLowerCase().includes(src.value.toLowerCase());
+}
+// The roster entry (rating, tier) for a player on an hri.gg team
+function hriMember(p) {
+  const team = state.hriTeam; if (!team) return null;
+  const keys = [p.name, p.username].filter(Boolean).map(s => String(s).toLowerCase());
+  return team.roster.find(m => [m.username, m.displayName, m.slug].some(k => k && keys.includes(String(k).toLowerCase()))) || null;
+}
 function teamPlayers() {
-  const tag = teamTag();
-  return currentPlayers().filter(p => isTeam(p.name, tag)).sort((a, b) => (a.rank || 9999) - (b.rank || 9999));
+  return currentPlayers().filter(p => isTeam(p)).sort((a, b) => (a.rank || 9999) - (b.rank || 9999));
 }
 
 // ---------- pairings ----------

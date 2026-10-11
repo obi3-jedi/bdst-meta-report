@@ -54,6 +54,7 @@ function selectTab(name, { focus = false, push = true } = {}) {
   store(false, 'bdst-tab', name);
   if (push && !state.overlay) history.replaceState(null, '', location.pathname + location.search + '#' + name);
   if (name === 'season') renderSeason();
+  if (name === 'team') renderTeamPicker();
 }
 $('tabs').addEventListener('click', e => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.dataset.tab); });
 $('tabs').addEventListener('keydown', e => {
@@ -158,14 +159,13 @@ function renderStandings() {
   $('standings-meta').textContent = v.round ? `after ${v.round}${v.replay ? ' (replay)' : ''}` : 'No completed rounds yet';
   const race = computeRace();
   const statusOf = new Map((race && !race.finished ? race.rows : []).map(r => [r.id, r.status]));
-  const tag = teamTag();
   const rows = ps.map(p => {
     const d = deckOf(p);
     const dropped = isDropped(p);
     const deck = d ? `<div class="deck">${deckArt(d)}<b>${esc(d.label)}</b></div>` : `<span class="none">${p.matched ? 'No decklist' : deckIndex() ? 'Not in decklists' : '—'}</span>`;
     const st = statusOf.get(p.id);
     const find = `${p.name} ${d ? d.label : ''}`.toLowerCase();
-    return `<tr class="${dropped ? 'dropped' : ''} ${isTeam(p.name, tag) ? 'team' : ''}" data-find="${esc(find)}">
+    return `<tr class="${dropped ? 'dropped' : ''} ${isTeam(p) ? 'team' : ''}" data-find="${esc(find)}">
       <td class="rk">${p.rank}</td>
       <td class="pl"><button class="plink" type="button" data-player="${esc(p.id)}">${esc(p.name)}</button>${dropped ? '<span class="tag">Dropped</span>' : ''}</td>
       <td class="rec">${esc(p.record)}</td>
@@ -192,7 +192,7 @@ function renderPairings() {
   const wanted = state.pairRound && rounds.some(r => r.id === state.pairRound) ? state.pairRound : (v.current?.id || v.at?.id || rounds[rounds.length - 1].id);
   sel.innerHTML = rounds.map(r => `<option value="${r.id}" ${r.id === wanted ? 'selected' : ''}>${esc(r.name)}${r.completed ? '' : ' (playing now)'}</option>`).join('');
   const pr = pairingsFor(wanted);
-  const tag = teamTag(), onlyFeature = $('pair-feature').checked;
+  const onlyFeature = $('pair-feature').checked;
   // The stream overlay follows the current round (or the latest one)
   const streamRound = state.liveId && wanted === (v.replay ? v.at?.id : (v.current?.id || v.at?.id));
   const shownOnStream = !state.featureSel?.round || state.featureSel.round === wanted;
@@ -207,7 +207,7 @@ function renderPairings() {
   };
   const html = pr.rows.filter(x => !onlyFeature || x.feature).map(x => {
     const [a, b] = x.players;
-    const team = x.players.some(p => isTeam(p.name, tag));
+    const team = x.players.some(p => isTeam(p));
     const find = x.players.map(p => `${p.name} ${deckOf(p)?.label || ''}`).join(' ').toLowerCase();
     if (!b) return `<div class="pr ${team ? 'team' : ''}" data-find="${esc(find)}"><div class="tbl">Table<b>${x.table ?? '–'}</b></div>${side(a, null, false, false)}<div class="pscore live">Bye</div><span></span><span></span></div>`;
     const score = x.hasResult ? `<div class="pscore">${a.gameWins}–${b.gameWins}</div>` : '<div class="pscore live">Playing</div>';
@@ -226,11 +226,10 @@ function renderRace() {
   const race = computeRace(), el = $('race-body');
   if (!race) { el.innerHTML = '<p class="empty-note">The race starts once the first Swiss round is complete.</p>'; $('race-meta').textContent = ''; return; }
   $('race-meta').textContent = race.finished ? `Swiss is finished · final top ${race.cut}` : `after ${race.round} · ${race.left} Swiss ${race.left === 1 ? 'round' : 'rounds'} left`;
-  const tag = teamTag();
   const show = race.rows.filter(r => r.status !== 'out' || r.rank <= race.cut + 8).sort((a, b) => a.rank - b.rank);
   const rows = show.map(r => {
     const d = deckOf(r);
-    return `<tr class="${r.status === 'out' ? 'is-out' : ''} ${r.rank === race.cut ? 'cutline' : ''} ${isTeam(r.name, tag) ? 'team' : ''}">
+    return `<tr class="${r.status === 'out' ? 'is-out' : ''} ${r.rank === race.cut ? 'cutline' : ''} ${isTeam(r) ? 'team' : ''}">
       <td class="rk">${r.rank}</td>
       <td class="pl"><button class="plink" type="button" data-player="${esc(r.id)}">${esc(r.name)}</button>${isDropped(r) ? '<span class="tag">Dropped</span>' : ''}</td>
       <td class="rec">${esc(r.record)}</td><td class="pts r">${r.points}</td>
@@ -329,20 +328,58 @@ function showMatchupDetail(key) {
 }
 
 // ---------- Team tab ----------
+// The team picker: every hri.gg team, plus a custom name tag
+async function renderTeamPicker() {
+  const sel = $('team-pick'), src = teamSource();
+  if (!sel.options.length || sel.dataset.loaded !== '1') {
+    sel.innerHTML = '<option value="">Loading teams…</option>';
+    try {
+      const teams = (await loadHriTeams()).slice().sort((a, b) => a.name.localeCompare(b.name));
+      sel.innerHTML = `<optgroup label="Teams on hri.gg">${teams.map(t => `<option value="hri:${esc(t.slug)}">${esc(t.name)} (${esc(t.abbreviation)})</option>`).join('')}</optgroup>
+        <option value="tag:">Custom tag…</option>`;
+      sel.dataset.loaded = '1';
+    } catch (e) {
+      sel.innerHTML = '<option value="tag:">Custom tag…</option>';
+      $('team-meta').textContent = 'Couldn’t load teams from hri.gg; using a custom tag.';
+    }
+  }
+  sel.value = src.type === 'hri' ? 'hri:' + src.value : 'tag:';
+  if (src.type === 'hri' && sel.value !== 'hri:' + src.value) sel.value = 'tag:';
+  $('team-tag-wrap').hidden = src.type !== 'tag';
+  if (src.type === 'tag' && document.activeElement !== $('team-tag')) $('team-tag').value = src.value;
+}
+
+// Load the chosen hri.gg team's roster, then redraw everything that highlights the team
+async function useTeam(raw) {
+  store(false, 'bdst-team-src', raw);
+  const src = teamSource();
+  if (src.type === 'hri') {
+    try { state.hriTeam = await loadHriTeam(src.value); }
+    catch (e) { state.hriTeam = null; toast(e.message); }
+  } else state.hriTeam = null;
+  renderTeamPicker();
+  render();
+}
+
 function renderTeam() {
-  const tag = teamTag();
-  if (document.activeElement !== $('team-tag')) $('team-tag').value = tag;
+  const src = teamSource(), team = src.type === 'hri' ? state.hriTeam : null;
   const members = teamPlayers();
   const el = $('team-body');
-  if (!currentPlayers().length) { el.innerHTML = '<p class="empty-note">Follow a tournament or upload standings to see your team.</p>'; $('team-meta').textContent = ''; return; }
-  if (!members.length) { el.innerHTML = `<p class="empty-note">No players with “${esc(tag)}” in their name at this event.</p>`; $('team-meta').textContent = ''; return; }
+  const head = team ? `<div class="team-head">${team.logo ? `<img src="${esc(team.logo)}" alt="" width="56" height="56">` : ''}
+      <div><b>${esc(team.name)}</b><span>${team.roster.length} on the hri.gg roster${team.links?.length ? ' · ' + team.links.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join(' · ') : ''} · <a href="https://hri.gg/teams/${esc(team.slug)}" target="_blank" rel="noopener">hri.gg ↗</a></span></div></div>` : '';
+  if (!currentPlayers().length) { el.innerHTML = head + '<p class="empty-note">Follow a tournament or upload standings to see your team.</p>'; $('team-meta').textContent = ''; return; }
+  if (src.type === 'hri' && !team) { el.innerHTML = '<p class="empty-note">Loading the team from hri.gg…</p>'; return; }
+  if (!members.length) {
+    el.innerHTML = head + `<p class="empty-note">${team ? `Nobody from ${esc(team.name)} is at this event.` : `No players with “${esc(src.value)}” in their name at this event.`}</p>`;
+    $('team-meta').textContent = ''; return;
+  }
   const sum = members.reduce((a, p) => { const r = rec(p.record); a.w += r.w; a.l += r.l; a.d += r.d; return a; }, { w: 0, l: 0, d: 0 });
   const race = computeRace();
   const st = new Map((race?.rows || []).map(r => [r.id, r.status]));
   const inCut = race ? members.filter(p => st.get(p.id) === 'locked').length : 0;
   const alive = members.filter(p => !isDropped(p)).length;
   const best = members[0];
-  $('team-meta').textContent = `${members.length} ${members.length === 1 ? 'player' : 'players'} tagged “${tag}”`;
+  $('team-meta').textContent = team ? `${members.length} of ${team.roster.length} roster members at this event` : `${members.length} ${members.length === 1 ? 'player' : 'players'} tagged “${src.value}”`;
   const current = state.view?.current ? state.view.history.find(h => h.id === state.view.current.id) : null;
   const nowOf = p => {
     if (!current) return '';
@@ -353,18 +390,24 @@ function renderTeam() {
     const od = deckOf(r.opp);
     return `<div class="now"><span class="res ${r.res}">${{ W: 'Won', L: 'Lost', D: 'Drew', P: 'Playing' }[r.res]}${r.score ? ' ' + r.score : ''}</span> vs <button class="plink" type="button" data-player="${esc(r.opp.id)}">${esc(r.opp.name)}</button>${od ? `<span class="hint">${esc(od.label)}</span>` : ''}</div>`;
   };
-  el.innerHTML = `<div class="team-sum">
+  // Roster members who aren't at this event
+  const here = new Set(members.map(p => hriMember(p)?.username).filter(Boolean));
+  const away = team ? team.roster.filter(m => !here.has(m.username)) : [];
+  const tierLabel = t => t ? t[0].toUpperCase() + t.slice(1) : '';
+  el.innerHTML = head + `<div class="team-sum">
       <div class="stat"><span class="eyebrow">Players</span><span class="v">${members.length}</span><span class="s">${alive} still in</span></div>
       <div class="stat"><span class="eyebrow">Combined record</span><span class="v">${sum.w}-${sum.l}${sum.d ? '-' + sum.d : ''}</span><span class="s">${pct(sum.w / Math.max(1, sum.w + sum.l + sum.d))} match wins</span></div>
       <div class="stat"><span class="eyebrow">Best placed</span><span class="v sm">${esc(best.name)}</span><span class="s">#${best.rank} · ${esc(best.record)}</span></div>
       <div class="stat"><span class="eyebrow">${race && !race.finished ? 'Locked for top ' + race.cut : 'In the top cut'}</span><span class="v">${race ? inCut : '–'}</span><span class="s">${race && !race.finished ? members.filter(p => st.get(p.id) === 'alive').length + ' still alive' : ''}</span></div></div>
     <div class="team-cards">${members.map(p => {
-      const d = deckOf(p), s = st.get(p.id);
+      const d = deckOf(p), s = st.get(p.id), hm = hriMember(p);
       return `<div class="tcard">${d ? leaderImg(d.leader) : '<span class="thumb" aria-hidden="true"></span>'}
         <div class="meta"><div class="top"><button class="plink" type="button" data-player="${esc(p.id)}">${esc(p.name)}</button><span class="rk">#${p.rank ?? '–'}</span></div>
         <span><span class="r2">${esc(p.record)}</span>${p.points != null ? ` · ${p.points} pts` : ''}${s ? ` · <span class="st-chip ${s}">${{ locked: race.finished ? 'In top ' + race.cut : 'Locked', alive: 'Alive', out: 'Out' }[s]}</span>` : ''}${isDropped(p) ? '<span class="tag">Dropped</span>' : ''}</span>
-        <span>${d ? esc(d.label) : 'No decklist'}</span>${nowOf(p)}</div></div>`;
-    }).join('')}</div>`;
+        <span>${d ? esc(d.label) : 'No decklist'}</span>
+        ${hm ? `<span class="hri">hri.gg ${Math.round(hm.rating)} · ${esc(tierLabel(hm.tier))}${hm.membership === 'reserve' ? ' · reserve' : ''}</span>` : ''}${nowOf(p)}</div></div>`;
+    }).join('')}</div>
+    ${away.length ? `<p class="hint">Not at this event: ${away.map(m => esc(m.displayName || m.username)).join(', ')}</p>` : ''}`;
 }
 
 // ---------- Season tab ----------
@@ -819,7 +862,8 @@ $('pair-round').addEventListener('change', e => { state.pairRound = Number(e.tar
 $('pair-filter').addEventListener('input', () => filterRows('pair-filter', '#pairings .pr'));
 $('pair-feature').addEventListener('change', renderPairings);
 $('standings-filter').addEventListener('input', () => filterRows('standings-filter', '#standings tbody tr'));
-$('team-tag').addEventListener('input', e => { store(false, 'bdst-team', e.target.value.trim()); render(); });
+$('team-tag').addEventListener('input', e => { store(false, 'bdst-team-src', 'tag:' + e.target.value.trim()); render(); });
+$('team-pick').addEventListener('change', e => { useTeam(e.target.value === 'tag:' ? 'tag:' + ($('team-tag').value.trim() || 'BDST') : e.target.value); });
 $('t30-link').value = store(true, 'bdst-t30');
 $('t30-swap').checked = !!store(true, 'bdst-t30swap');
 $('t30-colors').checked = store(true, 'bdst-t30colors') !== 'off';
@@ -938,6 +982,8 @@ $('dl').addEventListener('click', async () => {
 // ---------- start ----------
 function boot() {
   state.showWin = !!store(true, 'bdst-showwin'); $('showwin').checked = state.showWin;
+  // Load the chosen hri.gg team in the background; highlights appear once its roster arrives
+  if (teamSource().type === 'hri') loadHriTeam(teamSource().value).then(t => { state.hriTeam = t; render(); if (state.tab === 'team') renderTeamPicker(); }).catch(() => {});
   addFile(parseCSV(SAMPLE_CSV), true);
   $('evname').value = 'Sample event';
   setNotice(`Showing a <b>sample event</b> (${finalRound().length} players). Upload your own export or follow a live tournament.`);
