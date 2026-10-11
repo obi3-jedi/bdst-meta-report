@@ -170,6 +170,7 @@
     try {
       await loadLive(tid, { full });
       await ensureDecks(state.live.id);
+      if (state.asOf) { const v = computeView(); await ensureStandings([v.at?.id, v.prev?.id]); }
       draw();
     } catch (e) { if (!state.view) root.innerHTML = `<div class="ov-card"><div class="ov-empty">${esc(e.message)}</div></div>`; }
   }
@@ -179,8 +180,13 @@
     if (type !== 'feature' || !tid) return;
     const sel = await loadFeature(tid);
     if (!sel) return;
-    const next = JSON.stringify({ table: sel.table ?? null, player: sel.player ?? null });
-    if (next !== JSON.stringify({ table: featureSel?.table ?? null, player: featureSel?.player ?? null })) { featureSel = sel; if (state.view) draw(); }
+    const prev = JSON.stringify({ table: featureSel?.table ?? null, player: featureSel?.player ?? null, round: featureSel?.round ?? null });
+    if (JSON.stringify({ table: sel.table ?? null, player: sel.player ?? null, round: sel.round ?? null }) === prev) return;
+    featureSel = sel;
+    // A choice picked while replaying an earlier round shows that round, as it was then
+    state.asOf = sel.round || null;
+    if (state.live && state.asOf) { const v = computeView(); try { await ensureStandings([v.at?.id, v.prev?.id]); } catch (e) {} }
+    if (state.view || state.live) draw();
   }
   state.liveId = tid;
   checkFeature();

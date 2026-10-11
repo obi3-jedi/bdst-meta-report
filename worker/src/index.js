@@ -17,7 +17,8 @@
 //   DELETE /archive/:tid     (organiser)
 //   GET /admin/check         (organiser) -> { ok: true } when the passcode is right
 //   GET /feature/:tid        -> { tid, table, player, updated } which match the stream overlay features
-//   PUT /feature/:tid        (organiser) { table } or { player } (or {} to go back to the overlay link's table)
+//   PUT /feature/:tid        (organiser) { table } or { player }, optionally { round } to pin a past round
+//                            (or {} to go back to the overlay link's table)
 //
 // The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
 // Workers KV can take up to a minute to update everywhere.
@@ -227,6 +228,8 @@ async function feature(request, env, tid, origin) {
     const value = { updated: new Date().toISOString() };
     if (body.table != null && /^\d{1,4}$/.test(String(body.table))) value.table = Number(body.table);
     else if (body.player != null && /^\d{1,12}$/.test(String(body.player))) value.player = String(body.player);
+    // A choice made while replaying an earlier round pins the overlay to that round
+    if ((value.table != null || value.player) && body.round != null && /^\d{1,12}$/.test(String(body.round))) value.round = Number(body.round);
     const saved = await (await stub.fetch('https://do/feature', { method: 'PUT', body: JSON.stringify(value) })).json();
     return json({ tid: Number(tid), ...saved }, 200, origin, 0);
   }
