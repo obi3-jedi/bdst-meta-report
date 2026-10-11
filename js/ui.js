@@ -870,6 +870,7 @@ $('admin-save').addEventListener('click', async () => {
   try { await checkAdmin(key); store(false, 'bdst-admin', key); store(false, 'bdst-admin-ok', '1'); $('admin-key').value = ''; orgMsg('Unlocked. This device stays unlocked until you clear its browser data.'); }
   catch (e) { store(false, 'bdst-admin-ok', ''); orgMsg(e.message, true); }
   renderOrganiser();
+  if (state.view) { renderFeaturePicker(); renderPairings(); }   // show the organiser-only controls straight away
   if (state.tab === 'season') renderSeason();
 });
 $('share-decks').addEventListener('click', async () => {
@@ -939,6 +940,11 @@ function boot() {
   const saved = parseTournament(params.get('t') || '') || store(true, 'bdst-live');
   if (store(true, 'bdst-auto')) { $('auto').checked = true; setAuto(true); }
   if (saved) follow(saved);
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
+  }
 }
 boot();
