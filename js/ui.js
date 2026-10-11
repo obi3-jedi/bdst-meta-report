@@ -771,6 +771,26 @@ $('t30-link').value = store(true, 'bdst-t30');
 $('t30-swap').checked = !!store(true, 'bdst-t30swap');
 $('t30-colors').checked = store(true, 'bdst-t30colors') !== 'off';
 $('t30-colors').addEventListener('change', e => { store(false, 'bdst-t30colors', e.target.checked ? '' : 'off'); renderStream(); });
+// Reset the Take 30 game (two clicks, so a stray tap can't wipe a game), then put the matchup's colours and health back
+let resetArmed = null;
+$('t30-reset').addEventListener('click', async () => {
+  const btn = $('t30-reset'), out = $('t30-send-msg'), url = take30Url($('t30-link').value);
+  if (!url) { out.textContent = 'Add a Take 30 link first.'; return; }
+  if (!resetArmed) {
+    btn.textContent = 'Click again to reset';
+    resetArmed = setTimeout(() => { btn.textContent = 'Reset game'; resetArmed = null; }, 4000);
+    return;
+  }
+  clearTimeout(resetArmed); resetArmed = null;
+  btn.textContent = 'Resetting…'; btn.disabled = true;
+  try {
+    await resetTake30(url);
+    const fm = featureMatch(), fields = fm ? take30MatchFields(fm.match, $('t30-swap').checked) : {};
+    if (Object.keys(fields).length) { await new Promise(r => setTimeout(r, 800)); await sendTake30(url, fields); }
+    out.textContent = 'Game reset in Take 30. The overlay shows NEW GAME.';
+  } catch (e) { out.textContent = e.message; }
+  finally { btn.textContent = 'Reset game'; btn.disabled = false; }
+});
 $('t30-send').addEventListener('click', async () => {
   const out = $('t30-send-msg'), url = take30Url($('t30-link').value);
   const fm = featureMatch();

@@ -37,6 +37,7 @@
       root.classList.add('fm-mode');
       root.innerHTML = featureBanner(pr.round, m, params.get('pos') === 'bottom' ? 'bottom' : 'top');
       applyTake30();
+      lastMatch = { round: pr.round, m };
       syncTake30Colors(pr.round, m);
     } else if (type === 'bracket') {
       const br = v.bracket;
@@ -96,7 +97,7 @@
       <polygon points="0,0 1920,0 ${edge.split(' ').reverse().join(' ')}" fill="rgba(10,3,5,.9)"/>
       <polyline points="${edge}" fill="none" stroke="#ff1418" stroke-width="4" stroke-linejoin="round"/></svg>`;
     return `<div class="fm ${pos}">${shape}${side(a, false)}
-      <div class="fm-mid" style="left:calc(${L + 16} * var(--u));width:calc(${R - L - 32} * var(--u))">${hp(a, false)}<div class="fm-round">${esc(round.name)}<small>Table ${esc(m.table ?? '')}<i class="fm-live" title="Take 30 base counters"></i></small></div>${hp(b, true)}</div>
+      <div class="fm-mid" style="left:calc(${L + 16} * var(--u));width:calc(${R - L - 32} * var(--u))">${hp(a, false)}<div class="fm-flash" hidden>New game</div><div class="fm-round">${esc(round.name)}<small>Table ${esc(m.table ?? '')}<i class="fm-live" title="Take 30 base counters"></i></small></div>${hp(b, true)}</div>
       ${side(b, true)}</div>`;
   }
 
@@ -125,14 +126,27 @@
       el.classList.toggle('low', !!total && total - dmg <= 5);
     });
   }
-  if (t30) listenTake30(t30, tree => { t30tree = tree; applyTake30(); }, s => { t30state = s; applyTake30(); });
+  // A reset (action: "reset" in Take 30, from the Stream tab or the app) flashes NEW GAME on screen and
+  // re-sends the matchup's colours and starting health, in case the reset put the app back to its defaults.
+  let lastAction = null, lastMatch = null;
+  function onTake30Action(tree) {
+    const action = tree?.action ?? null;
+    if (action === 'reset' && lastAction !== 'reset') {
+      const flash = document.querySelector('.fm-flash');
+      if (flash) { flash.hidden = false; flash.classList.remove('show'); void flash.offsetWidth; flash.classList.add('show'); setTimeout(() => { flash.hidden = true; }, 4000); }
+      colorsSentFor = null;
+      if (lastMatch) setTimeout(() => syncTake30Colors(lastMatch.round, lastMatch.m, true), 2500);
+    }
+    lastAction = action;
+  }
+  if (t30) listenTake30(t30, tree => { t30tree = tree; onTake30Action(tree); applyTake30(); }, s => { t30state = s; applyTake30(); });
 
   // Send the matchup's base colours and starting health to Take 30 once per match (so anything changed by hand
   // in the app is left alone).
   // Turn off with &t30colors=0.
   const t30colors = params.get('t30colors') !== '0';
   let colorsSentFor = null;
-  async function syncTake30Colors(round, m) {
+  async function syncTake30Colors(round, m, force = false) {
     if (!t30 || !t30colors || m.players.length < 2) return;
     const key = `${round.id}|${m.table}|${m.players.map(p => p.id).join('|')}`;
     if (colorsSentFor === key) return;
@@ -140,7 +154,7 @@
     if (!Object.keys(fields).length) return;
     // Wait for Take 30's current state so unchanged colours aren't rewritten
     if (!t30tree) { setTimeout(() => syncTake30Colors(round, m), 1500); return; }
-    const changed = Object.fromEntries(Object.entries(fields).filter(([k, v]) => t30tree[k] !== v));
+    const changed = force ? fields : Object.fromEntries(Object.entries(fields).filter(([k, v]) => t30tree[k] !== v));
     colorsSentFor = key;
     if (!Object.keys(changed).length) return;
     try { await sendTake30(t30, changed); } catch (e) { colorsSentFor = null; console.warn(e.message); }

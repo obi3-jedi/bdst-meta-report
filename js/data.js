@@ -472,3 +472,10 @@ function take30MatchFields(match, swap) {
   });
   return out;
 }
+
+// Reset the game in Take 30: set action to "reset", then back to null so the app can detect the next one.
+async function resetTake30(url) {
+  await sendTake30(url, { action: 'reset' });
+  await new Promise(r => setTimeout(r, 1500));
+  await sendTake30(url, { action: null });
+}

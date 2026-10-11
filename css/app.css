@@ -485,3 +485,8 @@ body.overlay #app, body.overlay .modal, body.overlay .toast { display: none !imp
 .fm-side.right .fm-line { flex-direction: row-reverse; }
 .fm-round { display: flex; align-items: baseline; justify-content: center; gap: calc(8 * var(--u)); }
 .fm-round small { display: inline; margin-top: 0; }
+.fm-mid { position: absolute; }
+.fm-flash { position: absolute; inset: 0; display: grid; place-items: center; background: var(--red); color: #fff; font: italic 800 calc(26 * var(--u))/1 var(--f-display); letter-spacing: .12em; text-transform: uppercase; z-index: 2; clip-path: polygon(calc(18 * var(--u)) 0, calc(100% - 18 * var(--u)) 0, 100% 100%, 0 100%); }
+.fm-flash.show { animation: fm-flash 4s ease-out forwards; }
+@keyframes fm-flash { 0% { opacity: 0; transform: scaleY(.3); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fm-flash.show { animation: none; } }
