@@ -452,12 +452,15 @@ async function sendTake30(url, fields) {
   if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Take 30 didn’t allow the change. Check god mode is on for this game.' : `Take 30 answered with an error (${res.status}).`);
   return res.json();
 }
-// The colours for a match's two players, as Take 30 fields (respecting Swap sides).
-function take30ColorFields(match, swap) {
-  const [a, b] = match.players;
-  const ca = take30Color(deckOf(a)), cb = take30Color(deckOf(b));
+// What to set in Take 30 for a match's two players (respecting Swap sides): each base's colour and its real
+// starting health from the decklist (e.g. 33 for Data Vault). Player names will join this once Take 30 has a field for them.
+function take30MatchFields(match, swap) {
   const out = {};
-  if (ca) out[swap ? 'player2BaseColor' : 'player1BaseColor'] = ca;
-  if (cb) out[swap ? 'player1BaseColor' : 'player2BaseColor'] = cb;
+  match.players.slice(0, 2).forEach((p, i) => {
+    const d = deckOf(p), n = (swap ? 1 - i : i) + 1;
+    const color = take30Color(d), hp = d ? card('bases', d.rawBase)?.hp : null;
+    if (color) out[`player${n}BaseColor`] = color;
+    if (hp) out[`player${n}BaseStartingHealth`] = Number(hp);
+  });
   return out;
 }

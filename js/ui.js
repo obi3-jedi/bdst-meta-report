@@ -775,11 +775,11 @@ $('t30-send').addEventListener('click', async () => {
   const out = $('t30-send-msg'), url = take30Url($('t30-link').value);
   const fm = featureMatch();
   if (!url) { out.textContent = 'Add a Take 30 link first.'; return; }
-  if (!fm) { out.textContent = 'There’s no match to take colours from yet.'; return; }
-  const fields = take30ColorFields(fm.match, $('t30-swap').checked);
+  if (!fm) { out.textContent = 'There’s no feature match yet.'; return; }
+  const fields = take30MatchFields(fm.match, $('t30-swap').checked);
   if (!Object.keys(fields).length) { out.textContent = 'Those players’ bases aren’t known yet (no decklists).'; return; }
   out.textContent = 'Sending…';
-  try { await sendTake30(url, fields); out.textContent = `Sent: ${Object.entries(fields).map(([k, v]) => `${k.startsWith('player1') ? 'player 1' : 'player 2'} ${v}`).join(', ')} (table ${fm.match.table}).`; }
+  try { await sendTake30(url, fields); out.textContent = `Sent for table ${fm.match.table}: ` + [1, 2].map(n => `player ${n} ${fields[`player${n}BaseColor`] || '–'}, ${fields[`player${n}BaseStartingHealth`] || '–'} health`).join(' · '); }
   catch (e) { out.textContent = e.message; }
 });
 $('t30-link').addEventListener('change', e => { store(false, 'bdst-t30', e.target.value.trim()); renderStream(); });

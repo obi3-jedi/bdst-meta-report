@@ -127,7 +127,8 @@
   }
   if (t30) listenTake30(t30, tree => { t30tree = tree; applyTake30(); }, s => { t30state = s; applyTake30(); });
 
-  // Send the matchup's base colours to Take 30 once per match (so a colour changed by hand in the app is left alone).
+  // Send the matchup's base colours and starting health to Take 30 once per match (so anything changed by hand
+  // in the app is left alone).
   // Turn off with &t30colors=0.
   const t30colors = params.get('t30colors') !== '0';
   let colorsSentFor = null;
@@ -135,7 +136,7 @@
     if (!t30 || !t30colors || m.players.length < 2) return;
     const key = `${round.id}|${m.table}|${m.players.map(p => p.id).join('|')}`;
     if (colorsSentFor === key) return;
-    const fields = take30ColorFields(m, t30swap);
+    const fields = take30MatchFields(m, t30swap);
     if (!Object.keys(fields).length) return;
     // Wait for Take 30's current state so unchanged colours aren't rewritten
     if (!t30tree) { setTimeout(() => syncTake30Colors(round, m), 1500); return; }
