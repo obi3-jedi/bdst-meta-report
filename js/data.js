@@ -438,13 +438,20 @@ function listenTake30(url, onData, onState) {
   return () => { closed = true; es?.close(); };
 }
 
-// ---------- sending base colours to Take 30 ----------
-// Take 30 lets the overlay write to the game ("god mode"). Each player's base colour follows the base's aspect.
+// ---------- writing to Take 30 ("god mode") ----------
+// Take 30's fields, from its creator (n = 1-4):
+//   read only:  player<n>BaseDmg (damage taken), player<n>BaseHealth (health remaining)
+//   patchable:  player<n>BaseColor (hex like #xxxxxx, or blue|red|green|yellow|gray|grey),
+//               player<n>BaseStartingHealth (a number, 24 or higher)
+// The overlay only ever writes the two patchable fields, for players 1 and 2.
 const TAKE30_COLOR = { Vigilance: 'blue', Command: 'green', Aggression: 'red', Cunning: 'yellow' };
+const TAKE30_MIN_HEALTH = 24;
 function take30Color(d) {
   if (!d) return null;
-  const a = (card('bases', d.rawBase)?.a || []).find(x => TAKE30_COLOR[x]);
-  return a ? TAKE30_COLOR[a] : null;
+  const c = card('bases', d.rawBase);
+  if (!c) return null;
+  const a = (c.a || []).find(x => TAKE30_COLOR[x]);
+  return a ? TAKE30_COLOR[a] : 'gray';   // a base with no colour aspect
 }
 // Writes only the given fields (e.g. player1BaseColor / player2BaseColor); nothing else in the game is touched.
 async function sendTake30(url, fields) {
@@ -460,7 +467,8 @@ function take30MatchFields(match, swap) {
     const d = deckOf(p), n = (swap ? 1 - i : i) + 1;
     const color = take30Color(d), hp = d ? card('bases', d.rawBase)?.hp : null;
     if (color) out[`player${n}BaseColor`] = color;
-    if (hp) out[`player${n}BaseStartingHealth`] = Number(hp);
+    // Take 30 expects 24 or more; lower (e.g. 20 HP special bases) is left for setting by hand
+    if (hp && Number(hp) >= TAKE30_MIN_HEALTH) out[`player${n}BaseStartingHealth`] = Number(hp);
   });
   return out;
 }
