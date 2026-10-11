@@ -79,9 +79,9 @@
     };
     const [a, b] = m.players;
     // The banner outline: full height at the ends, raking down to a thin strip in the middle
-    const shape = `<svg class="fm-shape" viewBox="0 0 1920 156" preserveAspectRatio="none" aria-hidden="true">
-      <polygon points="0,0 1920,0 1920,150 1330,150 1240,72 680,72 590,150 0,150" fill="rgba(10,3,5,.9)"/>
-      <polyline points="0,150 590,150 680,72 1240,72 1330,150 1920,150" fill="none" stroke="#ff1418" stroke-width="5" stroke-linejoin="round"/></svg>`;
+    const shape = `<svg class="fm-shape" viewBox="0 0 1920 120" preserveAspectRatio="none" aria-hidden="true">
+      <polygon points="0,0 1920,0 1920,116 1450,116 1230,46 690,46 470,116 0,116" fill="rgba(10,3,5,.9)"/>
+      <polyline points="0,116 470,116 690,46 1230,46 1450,116 1920,116" fill="none" stroke="#ff1418" stroke-width="4" stroke-linejoin="round"/></svg>`;
     return `<div class="fm ${pos}">${shape}${side(a, false)}
       <div class="fm-mid">${hp(a, false)}<div class="fm-round">${esc(round.name)}<small>Table ${esc(m.table ?? '')}<i class="fm-live" title="Take 30 base counters"></i></small></div>${hp(b, true)}</div>
       ${side(b, true)}</div>`;
@@ -99,8 +99,10 @@
     document.querySelectorAll('.fm-hp[data-side]').forEach(el => {
       const i = Number(el.dataset.side), v = vals[t30swap ? 1 - i : i];
       if (!v) return;
+      // Damage counts up from 0 in Take 30, so health is the base's real printed health minus that damage.
+      // The app's preset starting health is only used when we don't know the player's base.
       const printed = Number(el.dataset.printed);
-      const hp = v.health != null ? v.health : printed ? printed - v.damage : null;
+      const hp = printed && v.damage != null ? printed - v.damage : v.health != null ? v.health : null;
       if (hp == null) return;
       const b = el.querySelector('b');
       const now = String(Math.max(0, Math.round(hp)));
