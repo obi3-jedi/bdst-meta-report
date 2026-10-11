@@ -55,6 +55,15 @@
   // Feature match banner for a 1920 × 1080 canvas: tall at the ends for the players, raking in to a thin
   // centre strip (base counters, round and table) so the middle of the board stays visible.
   const ASPECT_VAR = { Vigilance: 'var(--vig)', Command: 'var(--com)', Aggression: 'var(--agg)', Cunning: 'var(--cun)', Heroism: 'var(--her)', Villainy: '#000' };
+  // The camera shows a square play mat. By default it fills the frame's height (1080 of 1920 × 1080), centred,
+  // leaving 420 px each side. &mat=<px> sets the mat's on-screen size if the camera is framed differently.
+  // The player panels and the rake stay in the side areas; only the thin centre strip crosses the mat.
+  function geometry() {
+    const mat = Math.max(600, Math.min(1500, parseInt(params.get('mat'), 10) || 1080));
+    const L = (1920 - mat) / 2, R = L + mat, rake = Math.min(90, Math.max(40, L * .22));
+    return { mat, L, R, rake, side: L - rake, H: 116, C: 40 };
+  }
+  const G = geometry();
   function featureBanner(round, m, pos) {
     const BEST_OF = 3, need = Math.ceil(BEST_OF / 2);
     const side = (p, right) => {
@@ -63,11 +72,10 @@
       const bc = d ? card('bases', d.rawBase) : null;
       const strip = gi ? `<i class="fm-strip" style="background:${ASPECT_VAR[gi.aspect]}"></i>` : bc?.i ? `<i class="fm-strip" style="background-image:url('${bc.i}')"></i>` : '<i class="fm-strip"></i>';
       const pipsHtml = Array.from({ length: need }, (_, i) => `<i class="${i < (p.gameWins || 0) ? 'on' : ''}"></i>`).join('');
-      return `<div class="fm-side ${right ? 'right' : 'left'}">
+      return `<div class="fm-side ${right ? 'right' : 'left'}" style="width:calc(${G.side} * var(--u))">
         <div class="fm-art">${d ? leaderImg(d.leader, 'fm-img') : '<span class="fm-img"></span>'}${strip}</div>
         <div class="fm-info"><b>${esc(p.name)}</b><span class="fm-deck">${d ? esc(d.label) : ''}</span>
-          <span class="fm-rec">${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</span></div>
-        <div class="fm-pips" title="Games won">${pipsHtml}</div></div>`;
+          <span class="fm-line"><span class="fm-rec">${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</span><span class="fm-pips" title="Games won">${pipsHtml}</span></span></div></div>`;
     };
     // Base counters: the base's printed health until a live counter (e.g. Take 30) is linked
     const hp = (p, right) => {
@@ -81,11 +89,13 @@
     };
     const [a, b] = m.players;
     // The banner outline: full height at the ends, raking down to a thin strip in the middle
+    const { L, R, rake, H, C } = G;
+    const edge = `0,${H} ${L - rake},${H} ${L},${C} ${R},${C} ${R + rake},${H} 1920,${H}`;
     const shape = `<svg class="fm-shape" viewBox="0 0 1920 120" preserveAspectRatio="none" aria-hidden="true">
-      <polygon points="0,0 1920,0 1920,116 1450,116 1230,46 690,46 470,116 0,116" fill="rgba(10,3,5,.9)"/>
-      <polyline points="0,116 470,116 690,46 1230,46 1450,116 1920,116" fill="none" stroke="#ff1418" stroke-width="4" stroke-linejoin="round"/></svg>`;
+      <polygon points="0,0 1920,0 ${edge.split(' ').reverse().join(' ')}" fill="rgba(10,3,5,.9)"/>
+      <polyline points="${edge}" fill="none" stroke="#ff1418" stroke-width="4" stroke-linejoin="round"/></svg>`;
     return `<div class="fm ${pos}">${shape}${side(a, false)}
-      <div class="fm-mid">${hp(a, false)}<div class="fm-round">${esc(round.name)}<small>Table ${esc(m.table ?? '')}<i class="fm-live" title="Take 30 base counters"></i></small></div>${hp(b, true)}</div>
+      <div class="fm-mid" style="left:calc(${L + 16} * var(--u));width:calc(${R - L - 32} * var(--u))">${hp(a, false)}<div class="fm-round">${esc(round.name)}<small>Table ${esc(m.table ?? '')}<i class="fm-live" title="Take 30 base counters"></i></small></div>${hp(b, true)}</div>
       ${side(b, true)}</div>`;
   }
 
