@@ -364,6 +364,14 @@ function fbApply(tree, path, data, patch) {
 // Returns [{ health } | { damage }, …] for the two players, in Take 30's order, or null.
 function take30Health(tree) {
   if (!tree || typeof tree !== 'object') return null;
+  // Take 30's own layout: player1BaseHealth / player1BaseDmg / player1BaseStartingHealth (and player2…)
+  const t30 = n => {
+    const h = tree[`player${n}BaseHealth`], d = tree[`player${n}BaseDmg`], s = tree[`player${n}BaseStartingHealth`];
+    if (typeof h === 'number') return { health: h, start: s, key: `player${n}BaseHealth` };
+    if (typeof d === 'number' && typeof s === 'number') return { health: s - d, start: s, key: `player${n}BaseDmg` };
+    return null;
+  };
+  if (t30(1) && t30(2)) return [t30(1), t30(2)];
   const num = v => typeof v === 'number' ? v : (typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : null);
   const HEALTH = /(remaining|health|hp|life)$/i, DAMAGE = /damage|dmg/i, START = /^(start|starting|max|total|initial|base)(ing)?(health|hp|life)?$/i;
   const readPlayer = o => {
@@ -401,7 +409,7 @@ function take30Health(tree) {
   const flat = [];
   const leaves = (o, path) => { for (const [k, v] of Object.entries(o || {})) { if (num(v) != null) flat.push([path.concat(k).join('.'), num(v)]); else if (v && typeof v === 'object') leaves(v, path.concat(k)); } };
   leaves(tree, []);
-  const pick = re => flat.find(([k]) => re.test(k));
+  const pick = re => flat.find(([k]) => re.test(k) && !/start|max|initial/i.test(k));
   for (const kind of ['health', 'damage']) {
     const re1 = kind === 'health' ? /(p|player|team)[\s_-]?1\D*(health|hp|life|remaining)|left\D*(health|hp|life|remaining)/i : /(p|player|team)[\s_-]?1\D*(damage|dmg)|left\D*(damage|dmg)/i;
     const re2 = kind === 'health' ? /(p|player|team)[\s_-]?2\D*(health|hp|life|remaining)|right\D*(health|hp|life|remaining)/i : /(p|player|team)[\s_-]?2\D*(damage|dmg)|right\D*(damage|dmg)/i;
