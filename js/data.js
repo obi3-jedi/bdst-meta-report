@@ -437,3 +437,27 @@ function listenTake30(url, onData, onState) {
   } catch (e) { onState('stopped'); }
   return () => { closed = true; es?.close(); };
 }
+
+// ---------- sending base colours to Take 30 ----------
+// Take 30 lets the overlay write to the game ("god mode"). Each player's base colour follows the base's aspect.
+const TAKE30_COLOR = { Vigilance: 'blue', Command: 'green', Aggression: 'red', Cunning: 'yellow' };
+function take30Color(d) {
+  if (!d) return null;
+  const a = (card('bases', d.rawBase)?.a || []).find(x => TAKE30_COLOR[x]);
+  return a ? TAKE30_COLOR[a] : null;
+}
+// Writes only the given fields (e.g. player1BaseColor / player2BaseColor); nothing else in the game is touched.
+async function sendTake30(url, fields) {
+  const res = await fetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) });
+  if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Take 30 didn’t allow the change. Check god mode is on for this game.' : `Take 30 answered with an error (${res.status}).`);
+  return res.json();
+}
+// The colours for a match's two players, as Take 30 fields (respecting Swap sides).
+function take30ColorFields(match, swap) {
+  const [a, b] = match.players;
+  const ca = take30Color(deckOf(a)), cb = take30Color(deckOf(b));
+  const out = {};
+  if (ca) out[swap ? 'player2BaseColor' : 'player1BaseColor'] = ca;
+  if (cb) out[swap ? 'player1BaseColor' : 'player2BaseColor'] = cb;
+  return out;
+}

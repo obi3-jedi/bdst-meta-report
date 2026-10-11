@@ -420,7 +420,7 @@ function renderStream() {
     { type: 'decks', title: 'Deck breakdown', desc: 'The most played decks with share. Suggested size 520 × 720.', extra: '&n=8' },
   ];
   const t30 = take30Url(store(true, 'bdst-t30'));
-  const t30extra = t30 ? `&t30=${encodeURIComponent(t30)}${store(true, 'bdst-t30swap') ? '&t30swap=1' : ''}` : '';
+  const t30extra = t30 ? `&t30=${encodeURIComponent(t30)}${store(true, 'bdst-t30swap') ? '&t30swap=1' : ''}${store(true, 'bdst-t30colors') === 'off' ? '&t30colors=0' : ''}` : '';
   $('overlays').innerHTML = items.map(it => {
     const url = `${base}?overlay=${it.type}&t=${tid}${it.extra}${it.type === 'feature' ? t30extra : ''}`;
     return `<div class="ovl"><h4>${it.title}</h4><p>${it.desc}</p><code>${esc(url)}</code>
@@ -769,6 +769,19 @@ $('standings-filter').addEventListener('input', () => filterRows('standings-filt
 $('team-tag').addEventListener('input', e => { store(false, 'bdst-team', e.target.value.trim()); render(); });
 $('t30-link').value = store(true, 'bdst-t30');
 $('t30-swap').checked = !!store(true, 'bdst-t30swap');
+$('t30-colors').checked = store(true, 'bdst-t30colors') !== 'off';
+$('t30-colors').addEventListener('change', e => { store(false, 'bdst-t30colors', e.target.checked ? '' : 'off'); renderStream(); });
+$('t30-send').addEventListener('click', async () => {
+  const out = $('t30-send-msg'), url = take30Url($('t30-link').value);
+  const fm = featureMatch();
+  if (!url) { out.textContent = 'Add a Take 30 link first.'; return; }
+  if (!fm) { out.textContent = 'There’s no match to take colours from yet.'; return; }
+  const fields = take30ColorFields(fm.match, $('t30-swap').checked);
+  if (!Object.keys(fields).length) { out.textContent = 'Those players’ bases aren’t known yet (no decklists).'; return; }
+  out.textContent = 'Sending…';
+  try { await sendTake30(url, fields); out.textContent = `Sent: ${Object.entries(fields).map(([k, v]) => `${k.startsWith('player1') ? 'player 1' : 'player 2'} ${v}`).join(', ')} (table ${fm.match.table}).`; }
+  catch (e) { out.textContent = e.message; }
+});
 $('t30-link').addEventListener('change', e => { store(false, 'bdst-t30', e.target.value.trim()); renderStream(); });
 $('t30-swap').addEventListener('change', e => { store(false, 'bdst-t30swap', e.target.checked ? '1' : ''); renderStream(); if (t30stop) testTake30(); });
 $('t30-test').addEventListener('click', () => { store(false, 'bdst-t30', $('t30-link').value.trim()); renderStream(); testTake30(); });

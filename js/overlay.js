@@ -37,6 +37,7 @@
       root.classList.add('fm-mode');
       root.innerHTML = featureBanner(pr.round, m, params.get('pos') === 'bottom' ? 'bottom' : 'top');
       applyTake30();
+      syncTake30Colors(pr.round, m);
     } else if (type === 'bracket') {
       const br = v.bracket;
       if (!br) { root.innerHTML = `<div class="ov-card"><div class="ov-empty">The bracket appears after the first Swiss round.</div></div>`; return; }
@@ -125,6 +126,24 @@
     });
   }
   if (t30) listenTake30(t30, tree => { t30tree = tree; applyTake30(); }, s => { t30state = s; applyTake30(); });
+
+  // Send the matchup's base colours to Take 30 once per match (so a colour changed by hand in the app is left alone).
+  // Turn off with &t30colors=0.
+  const t30colors = params.get('t30colors') !== '0';
+  let colorsSentFor = null;
+  async function syncTake30Colors(round, m) {
+    if (!t30 || !t30colors || m.players.length < 2) return;
+    const key = `${round.id}|${m.table}|${m.players.map(p => p.id).join('|')}`;
+    if (colorsSentFor === key) return;
+    const fields = take30ColorFields(m, t30swap);
+    if (!Object.keys(fields).length) return;
+    // Wait for Take 30's current state so unchanged colours aren't rewritten
+    if (!t30tree) { setTimeout(() => syncTake30Colors(round, m), 1500); return; }
+    const changed = Object.fromEntries(Object.entries(fields).filter(([k, v]) => t30tree[k] !== v));
+    colorsSentFor = key;
+    if (!Object.keys(changed).length) return;
+    try { await sendTake30(t30, changed); } catch (e) { colorsSentFor = null; console.warn(e.message); }
+  }
 
   async function tick(full) {
     if (!tid) { root.innerHTML = '<div class="ov-card"><div class="ov-empty">Add &t=&lt;tournament id&gt; to the link.</div></div>'; return; }
