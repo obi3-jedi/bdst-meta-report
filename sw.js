@@ -1,6 +1,6 @@
 // Offline cache for the BDST Meta Report. The app shell is served from cache and refreshed in the
 // background (so a new version shows on the next visit); card art is cached once; live data is never cached.
-const SHELL = 'bdst-shell-v11', ART = 'bdst-art-v1';
+const SHELL = 'bdst-shell-v12', ART = 'bdst-art-v1';
 const FILES = ['./', 'index.html', 'css/app.css', 'js/core.js', 'js/data.js', 'js/images.js', 'js/ui.js', 'js/overlay.js', 'js/sample.js', 'cards.js', 'bdst-logo.png', 'bdst-icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });

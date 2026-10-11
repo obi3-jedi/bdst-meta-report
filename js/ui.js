@@ -85,6 +85,7 @@ function render() {
     renderBracket();
     renderMatchups();
     renderStream();
+    renderFeaturePicker();
   }
   renderTeam();
   renderReplay();
@@ -192,6 +193,9 @@ function renderPairings() {
   sel.innerHTML = rounds.map(r => `<option value="${r.id}" ${r.id === wanted ? 'selected' : ''}>${esc(r.name)}${r.completed ? '' : ' (playing now)'}</option>`).join('');
   const pr = pairingsFor(wanted);
   const tag = teamTag(), onlyFeature = $('pair-feature').checked;
+  // The stream overlay follows the current round (or the latest one)
+  const streamRound = state.liveId && !v.replay && wanted === (v.current?.id || v.at?.id);
+  const org = !!store(true, 'bdst-admin-ok') && !!adminKey();
   $('pairings-meta').textContent = `${pr.rows.length} ${pr.rows.length === 1 ? 'match' : 'matches'}${pr.round.completed ? '' : ' · playing now'}`;
   const side = (p, other, right, done) => {
     const d = deckOf(p);
@@ -206,10 +210,11 @@ function renderPairings() {
     const find = x.players.map(p => `${p.name} ${deckOf(p)?.label || ''}`).join(' ').toLowerCase();
     if (!b) return `<div class="pr ${team ? 'team' : ''}" data-find="${esc(find)}"><div class="tbl">Table<b>${x.table ?? '–'}</b></div>${side(a, null, false, false)}<div class="pscore live">Bye</div><span></span><span></span></div>`;
     const score = x.hasResult ? `<div class="pscore">${a.gameWins}–${b.gameWins}</div>` : '<div class="pscore live">Playing</div>';
-    return `<div class="pr ${team ? 'team' : ''}" data-find="${esc(find)}">
-      <div class="tbl">${x.feature ? '<span class="feat">Feature</span>' : ''}Table<b>${x.table ?? '–'}</b></div>
+    const live = streamRound && onStream(pr.round, x);
+    return `<div class="pr ${team ? 'team' : ''} ${live ? 'live' : ''}" data-find="${esc(find)}">
+      <div class="tbl">${live ? '<span class="feat on">On stream</span>' : x.feature ? '<span class="feat">Feature</span>' : ''}Table<b>${x.table ?? '–'}</b></div>
       ${side(a, b, false, x.hasResult)}${score}${side(b, a, true, x.hasResult)}
-      <button class="btn ghost sm pimg" type="button" data-feature="${pr.round.id}|${x.table}" title="Make a feature match image">Image</button></div>`;
+      <div class="pbtns">${org && streamRound && !live ? `<button class="btn sm" type="button" data-stream="${x.table}" title="Show this match in the stream overlay">Feature on stream</button>` : ''}<button class="btn ghost sm pimg" type="button" data-feature="${pr.round.id}|${x.table}" title="Make a feature match image">Image</button></div></div>`;
   }).join('');
   $('pairings').innerHTML = html || '<p class="empty-note">No matches to show.</p>';
   filterRows('pair-filter', '#pairings .pr');
@@ -559,14 +564,53 @@ let lastBlob = null, downloads = null;
 window.claude?.use?.('downloads').then(d => { downloads = d; }).catch(() => {});
 
 // The match a feature image shows: one picked from Pairings, otherwise table 1 of the current (or latest) round.
+// The match a feature image (or Take 30 send) uses: one picked from Pairings for an image, otherwise the match
+// featured on stream, otherwise table 1 of the current (or latest) round.
 function featureMatch() {
   const v = state.view; if (!v) return null;
   const pick = state.feature;
   const roundId = pick?.roundId || v.current?.id || v.at?.id;
   const pr = roundId ? pairingsFor(roundId) : null; if (!pr) return null;
   const rows = pr.rows.filter(x => x.players.length === 2);
-  const m = (pick && rows.find(x => String(x.table) === String(pick.table))) || rows[0];
+  const m = (pick && rows.find(x => String(x.table) === String(pick.table))) || pickFeatureMatch(pr.rows, state.featureSel) || rows[0];
   return m ? { round: pr.round, match: m } : null;
+}
+
+// ---------- feature match on stream ----------
+const onStream = (round, x) => {
+  const m = pickFeatureMatch([x], state.featureSel);
+  return !!m;
+};
+function renderFeaturePicker() {
+  const el = $('feature-picker'); if (!el || !state.view) return;
+  const v = state.view, roundId = v.current?.id || v.at?.id;
+  const pr = roundId ? pairingsFor(roundId) : null;
+  const rows = (pr?.rows || []).filter(x => x.players.length === 2);
+  const sel = state.featureSel || {};
+  const ok = !!store(true, 'bdst-admin-ok') && !!adminKey();
+  const cur = pr ? pickFeatureMatch(pr.rows, sel) : null;
+  const followed = sel.player ? currentPlayers().find(p => p.id === String(sel.player)) : null;
+  const now = sel.player
+    ? `Following <b>${esc(followed?.name || 'a player')}</b>${cur ? ` · table ${cur.table}: ${esc(cur.players[0].name)} vs ${esc(cur.players[1].name)}` : ' · not paired this round'}`
+    : cur ? `Table <b>${cur.table}</b>: ${esc(cur.players[0].name)} vs ${esc(cur.players[1].name)}` : `Table ${sel.table ?? 1} (no match there this round)`;
+  const players = currentPlayers().filter(p => !isDropped(p)).sort((a, b) => a.name.localeCompare(b.name));
+  el.innerHTML = `<p class="fp-now">On stream now: ${now}${pr ? ` <span class="hint">(${esc(pr.round.name)})</span>` : ''}</p>
+    ${ok ? `<div class="row2">
+      <label class="selectl">Table <select id="fp-table"><option value="">Choose a match…</option>${rows.map(x => `<option value="${x.table}" ${!sel.player && String(sel.table ?? 1) === String(x.table) ? 'selected' : ''}>Table ${x.table}: ${esc(x.players[0].name)} vs ${esc(x.players[1].name)}</option>`).join('')}</select></label>
+      <label class="selectl">or follow <select id="fp-player"><option value="">a player…</option>${players.map(p => `<option value="${esc(p.id)}" ${String(sel.player) === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    </div><p class="hint">“Table” stays on that table every round. “Follow” shows whichever match that player is in, every round. The overlay switches within a few seconds.</p>`
+    : '<p class="hint">Unlock <b>Organiser tools</b> (in Follow live) to choose the feature match. Until then the overlay shows table 1, or the table in its link.</p>'}`;
+  $('fp-table')?.addEventListener('change', e => { if (e.target.value) setFeature({ table: Number(e.target.value) }); });
+  $('fp-player')?.addEventListener('change', e => { if (e.target.value) setFeature({ player: e.target.value }); });
+}
+async function setFeature(value) {
+  try {
+    state.featureSel = await saveFeature(state.live.id, value);
+    state.feature = null;
+    const m = featureMatch();
+    toast(m ? `On stream: table ${m.match.table}, ${m.match.players[0].name} vs ${m.match.players[1].name}` : 'Feature match saved');
+    renderFeaturePicker(); renderPairings();
+  } catch (e) { toast(e.message); }
 }
 
 function renderKinds() {
@@ -689,6 +733,7 @@ async function doRefresh({ full = true, quiet = false } = {}) {
     if (state.liveId !== tid) return;
     await ensureDecks(L.id);
     if (state.asOf) { const v = computeView(); await ensureStandings([v.at?.id, v.prev?.id]); }
+    state.featureSel = (await loadFeature(L.id)) || state.featureSel;
     $('evname').value = store(true, 'swu-ev-' + tid) || L.name;
     rememberEvent(L.id, L.name);
     render();
@@ -845,6 +890,7 @@ document.addEventListener('click', async e => {
   const pl = t.closest('.plink[data-player]'); if (pl) { openPlayer(pl.dataset.player); return; }
   const rf = t.closest('[data-follow]'); if (rf) { follow(rf.dataset.follow); return; }
   const im = t.closest('[data-image]'); if (im) { openShare(im.dataset.image); return; }
+  const st = t.closest('[data-stream]'); if (st) { setFeature({ table: Number(st.dataset.stream) }); return; }
   const ft = t.closest('[data-feature]'); if (ft) { const [roundId, table] = ft.dataset.feature.split('|'); state.feature = { roundId: Number(roundId), table }; openShare('feature'); return; }
   const kd = t.closest('#kindseg [data-kind]'); if (kd) { state.kind = kd.dataset.kind; renderKinds(); shareHint(); refreshShot(); return; }
   const cp = t.closest('[data-copy]');

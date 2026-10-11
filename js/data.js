@@ -479,3 +479,17 @@ async function resetTake30(url) {
   await new Promise(r => setTimeout(r, 1500));
   await sendTake30(url, { action: null });
 }
+
+// ---------- feature match choice (shared with the stream overlay through the relay) ----------
+// { table } features that table every round; { player } follows that player's match each round; {} uses the overlay link's table.
+async function loadFeature(tid) { try { return await relay('/feature/' + tid); } catch (e) { return null; } }
+async function saveFeature(tid, value) {
+  return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify(value) });
+}
+// The match a selection points to in a round's pairings (rows from pairingsFor)
+function pickFeatureMatch(rows, sel, fallbackTable = 1) {
+  const two = rows.filter(x => x.players.length === 2);
+  if (sel?.player) return two.find(x => x.players.some(p => p.id === String(sel.player))) || null;
+  const table = sel?.table ?? fallbackTable;
+  return two.find(x => String(x.table) === String(table)) || null;
+}

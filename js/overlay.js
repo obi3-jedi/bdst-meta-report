@@ -32,8 +32,13 @@
     } else if (type === 'feature') {
       const roundId = v.current?.id || v.at?.id;
       const pr = roundId ? pairingsFor(roundId) : null;
-      const m = pr?.rows.find(x => String(x.table) === String(table)) || pr?.rows.find(x => x.players.length === 2);
-      if (!m || m.players.length < 2) { root.innerHTML = `<div class="ov-card"><div class="ov-empty">No match at table ${esc(table)} yet.</div></div>`; return; }
+      const m = pr ? pickFeatureMatch(pr.rows, featureSel, table) : null;
+      if (!m) {
+        const who = featureSel?.player ? (currentPlayers().find(p => p.id === String(featureSel.player))?.name || 'that player') : null;
+        root.classList.remove('fm-mode');
+        root.innerHTML = `<div class="ov-card"><div class="ov-empty">${who ? `Waiting for ${esc(who)}’s next match.` : `No match at table ${esc(featureSel?.table ?? table)} yet.`}</div></div>`;
+        return;
+      }
       root.classList.add('fm-mode');
       root.innerHTML = featureBanner(pr.round, m, params.get('pos') === 'bottom' ? 'bottom' : 'top');
       applyTake30();
@@ -168,7 +173,18 @@
       draw();
     } catch (e) { if (!state.view) root.innerHTML = `<div class="ov-card"><div class="ov-empty">${esc(e.message)}</div></div>`; }
   }
+  // The feature match picked on the Stream tab or in Pairings (checked every few seconds)
+  let featureSel = null;
+  async function checkFeature() {
+    if (type !== 'feature' || !tid) return;
+    const sel = await loadFeature(tid);
+    if (!sel) return;
+    const next = JSON.stringify({ table: sel.table ?? null, player: sel.player ?? null });
+    if (next !== JSON.stringify({ table: featureSel?.table ?? null, player: featureSel?.player ?? null })) { featureSel = sel; if (state.view) draw(); }
+  }
   state.liveId = tid;
+  checkFeature();
+  setInterval(checkFeature, 4000);
   tick(true);
   setInterval(() => tick(false), 60000);
 })();

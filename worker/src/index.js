@@ -16,6 +16,11 @@
 //   PUT /archive/:tid        (organiser) { id, name, date, players: [...], top8: [...], champion }
 //   DELETE /archive/:tid     (organiser)
 //   GET /admin/check         (organiser) -> { ok: true } when the passcode is right
+//   GET /feature/:tid        -> { tid, table, player, updated } which match the stream overlay features
+//   PUT /feature/:tid        (organiser) { table } or { player } (or {} to go back to the overlay link's table)
+//
+// The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
+// Workers KV can take up to a minute to update everywhere.
 
 const MELEE = 'https://melee.gg';
 const ALLOWED_ORIGINS = [
@@ -199,12 +204,43 @@ async function storage(request, env, path, origin) {
   return null;
 }
 
+// One tiny Durable Object per tournament holding the feature match choice.
+export class FeatureMatch {
+  constructor(ctx) { this.ctx = ctx; }
+  async fetch(request) {
+    if (request.method === 'PUT') {
+      const value = await request.json();
+      await this.ctx.storage.put('feature', value);
+      return Response.json(value);
+    }
+    return Response.json((await this.ctx.storage.get('feature')) || {});
+  }
+}
+
+async function feature(request, env, tid, origin) {
+  if (!env.FEATURE) return json({ error: 'The feature match picker is not set up on this relay.' }, 501, origin, 0);
+  const stub = env.FEATURE.get(env.FEATURE.idFromName(String(tid)));
+  if (request.method === 'GET') return json({ tid: Number(tid), ...(await (await stub.fetch('https://do/feature')).json()) }, 200, origin, 0);
+  if (request.method === 'PUT') {
+    if (!isAdmin(request, env)) return json({ error: 'That organiser passcode is not right.' }, 401, origin, 0);
+    const body = await readBody(request);
+    const value = { updated: new Date().toISOString() };
+    if (body.table != null && /^\d{1,4}$/.test(String(body.table))) value.table = Number(body.table);
+    else if (body.player != null && /^\d{1,12}$/.test(String(body.player))) value.player = String(body.player);
+    const saved = await (await stub.fetch('https://do/feature', { method: 'PUT', body: JSON.stringify(value) })).json();
+    return json({ tid: Number(tid), ...saved }, 200, origin, 0);
+  }
+  return json({ error: 'Use GET or PUT.' }, 405, origin, 0);
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors(origin) });
     const path = new URL(request.url).pathname;
     try {
+      const fm = path.match(/^\/feature\/(\d{1,9})$/);
+      if (fm) return await feature(request, env, fm[1], origin);
       if (/^\/(decks|archive|admin)(\/|$)/.test(path)) {
         const res = await storage(request, env, path, origin);
         if (res) return res;

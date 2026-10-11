@@ -10,3 +10,12 @@ name = "bdst-melee-relay-staging"
 [[env.staging.kv_namespaces]]
 binding = "DATA"
 id = "11c87ed000b140b29430df018dfa122a"
+
+# Feature match choice, one Durable Object per tournament (SQLite-backed, available on the free plan)
+[[env.staging.durable_objects.bindings]]
+name = "FEATURE"
+class_name = "FeatureMatch"
+
+[[env.staging.migrations]]
+tag = "v1"
+new_sqlite_classes = ["FeatureMatch"]

@@ -490,3 +490,20 @@ body.overlay #app, body.overlay .modal, body.overlay .toast { display: none !imp
 .fm-flash.show { animation: fm-flash 4s ease-out forwards; }
 @keyframes fm-flash { 0% { opacity: 0; transform: scaleY(.3); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fm-flash.show { animation: none; } }
+.pr { grid-template-columns: 3.4rem minmax(0, 1fr) 4.6rem minmax(0, 1fr) auto; }
+.pbtns { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.pr.live { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.pr .feat.on { background: var(--red); color: #fff; padding: 3px 5px; border-radius: 4px; }
+.fp-now { margin: 0; font-size: 14px; }
+.fp-now b { font-weight: 700; }
+#feature-picker { display: grid; gap: 10px; }
+#feature-picker select { max-width: 100%; }
+@media (max-width: 680px) { .pbtns { grid-area: x; flex-direction: row; justify-self: start; } }
+#feature-picker .row2 { display: grid; gap: 8px; }
+#feature-picker .selectl { display: grid; grid-template-columns: auto minmax(0, 1fr); width: 100%; }
+#feature-picker select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.ovl { min-width: 0; }
+.overlays { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+.team-cards { grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); }
+.pilots { grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
+.brand { min-width: 0; flex-wrap: wrap; }
