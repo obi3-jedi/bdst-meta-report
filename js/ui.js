@@ -444,7 +444,7 @@ function testTake30() {
     const show = x => x ? (x.damage != null ? `${x.damage} damage taken` : `${x.health} health`) : '–';
     const [l, r] = v ? (swap ? [v[1], v[0]] : v) : [null, null];
     out.innerHTML = (v
-      ? `<p class="ok">Live. Left player: <b>${esc(show(l))}</b> · Right player: <b>${esc(show(r))}</b>. Change a base in the app and these should update straight away.</p><p class="hint">The overlay shows each player’s real base health (from their decklist) minus this damage. Read from <code>${esc(v[0].key)}</code> and <code>${esc(v[1].key)}</code>.</p>`
+      ? `<p class="ok">Live. Left player: <b>${esc(show(l))}</b> · Right player: <b>${esc(show(r))}</b>. Change a base in the app and these should update straight away.</p><p class="hint">The overlay shows this damage out of each player’s real base health from their decklist, e.g. 5/33. Read from <code>${esc(v[0].key)}</code> and <code>${esc(v[1].key)}</code>.</p>`
       : '<p class="err">Connected, but I couldn’t find the base health in this data. Send a screenshot of the data below so the overlay can be matched to it.</p>')
       + `<details><summary>Data from Take 30</summary><pre>${esc(JSON.stringify(tree, null, 2).slice(0, 4000))}</pre></details>`;
   }, s => { if (s === 'stopped') out.insertAdjacentHTML('afterbegin', '<p class="err">Take 30 stopped broadcasting this link.</p>'); });

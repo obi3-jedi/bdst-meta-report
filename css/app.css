@@ -476,3 +476,7 @@ body.overlay #app, body.overlay .modal, body.overlay .toast { display: none !imp
 .t30-result pre { max-height: 260px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: 12px var(--f-data); white-space: pre-wrap; }
 .t30-result summary { cursor: pointer; color: var(--muted); }
 .overlays { margin-top: 12px; }
+.fm-dmg { display: inline-flex; align-items: baseline; font-variant-numeric: tabular-nums; }
+.fm-dmg b { font: 700 calc(34 * var(--u))/1 var(--f-data); display: inline-block; min-width: 0; }
+.fm-dmg small { font: 600 calc(18 * var(--u))/1 var(--f-data); color: #d9b9ba; margin-left: calc(2 * var(--u)); }
+.fm-hp.low .fm-dmg b, .fm-hp.low .fm-dmg small { color: var(--red); }

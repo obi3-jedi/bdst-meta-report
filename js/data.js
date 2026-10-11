@@ -367,8 +367,9 @@ function take30Health(tree) {
   // Take 30's own layout: player1BaseHealth / player1BaseDmg / player1BaseStartingHealth (and player2…)
   const t30 = n => {
     const h = tree[`player${n}BaseHealth`], d = tree[`player${n}BaseDmg`], s = tree[`player${n}BaseStartingHealth`];
-    if (typeof d === 'number') return { damage: d, health: typeof h === 'number' ? h : typeof s === 'number' ? s - d : null, key: `player${n}BaseDmg` };
-    if (typeof h === 'number') return { health: h, key: `player${n}BaseHealth` };
+    const start = typeof s === 'number' ? s : null;
+    if (typeof d === 'number') return { damage: d, start, health: typeof h === 'number' ? h : start != null ? start - d : null, key: `player${n}BaseDmg` };
+    if (typeof h === 'number') return { health: h, start, damage: start != null ? start - h : null, key: `player${n}BaseHealth` };
     return null;
   };
   if (t30(1) && t30(2)) return [t30(1), t30(2)];

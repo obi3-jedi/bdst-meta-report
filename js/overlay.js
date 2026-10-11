@@ -75,7 +75,9 @@
       const gi = d ? genericInfo.get(d.base) : null;
       const bc = d ? card('bases', d.rawBase) : null;
       const sw = gi ? `<span class="fm-bsw" style="background:${ASPECT_VAR[gi.aspect]}"></span>` : bc?.i ? `<span class="fm-bsw" style="background-image:url('${bc.i}')"></span>` : '<span class="fm-bsw"></span>';
-      return `<div class="fm-hp ${right ? 'right' : 'left'}" data-side="${right ? 1 : 0}" data-printed="${bc?.hp ?? ''}">${right ? '' : sw}<b>${bc?.hp ?? '–'}</b>${right ? sw : ''}</div>`;
+      // Damage out of the base's health: starts at 0/33 and the first number counts up
+      const total = bc?.hp ?? '';
+      return `<div class="fm-hp ${right ? 'right' : 'left'}" data-side="${right ? 1 : 0}" data-printed="${total}">${right ? '' : sw}<span class="fm-dmg"><b>0</b><small>/${total || '–'}</small></span>${right ? sw : ''}</div>`;
     };
     const [a, b] = m.players;
     // The banner outline: full height at the ends, raking down to a thin strip in the middle
@@ -99,15 +101,17 @@
     document.querySelectorAll('.fm-hp[data-side]').forEach(el => {
       const i = Number(el.dataset.side), v = vals[t30swap ? 1 - i : i];
       if (!v) return;
-      // Damage counts up from 0 in Take 30, so health is the base's real printed health minus that damage.
-      // The app's preset starting health is only used when we don't know the player's base.
-      const printed = Number(el.dataset.printed);
-      const hp = printed && v.damage != null ? printed - v.damage : v.health != null ? v.health : null;
-      if (hp == null) return;
-      const b = el.querySelector('b');
-      const now = String(Math.max(0, Math.round(hp)));
-      if (b.textContent !== now) { b.textContent = now; el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
-      el.classList.toggle('low', hp <= 5);
+      // Show damage taken out of the base's real health (from the decklist). Take 30 counts damage up from 0;
+      // its own starting health is only used when we don't know the player's base.
+      const total = Number(el.dataset.printed) || v.start || null;
+      let dmg = v.damage;
+      if (dmg == null && v.health != null && total) dmg = total - v.health;
+      if (dmg == null) return;
+      dmg = Math.max(0, Math.round(dmg));
+      const b = el.querySelector('b'), small = el.querySelector('small');
+      if (small && total) small.textContent = '/' + total;
+      if (b.textContent !== String(dmg)) { b.textContent = String(dmg); el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
+      el.classList.toggle('low', !!total && total - dmg <= 5);
     });
   }
   if (t30) listenTake30(t30, tree => { t30tree = tree; applyTake30(); }, s => { t30state = s; applyTake30(); });
