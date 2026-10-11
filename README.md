@@ -1,12 +1,20 @@
 # BDST Meta Report
 
-A deck breakdown for Star Wars: Unlimited tournaments. Upload a melee.gg standings export (CSV or Excel) and the site shows every deck (leader + base) with how many players ran it and its share of the field, plus a BDST-branded 1920×1080 graphic to share.
+A tournament assistant for Star Wars: Unlimited, built on melee.gg. Follow an event live (or upload a standings export) and get:
 
-Common bases are named by colour since they're interchangeable: "Yoda Red" is Yoda on any plain 30 HP Aggression base, "Yoda Red Force" on any Aggression Force base. Rare bases like Data Vault keep their names.
+- **Decks**: deck, leader and base breakdowns with optional win rates, plus aspects
+- **Pairings**: every round's pairings with both decks, feature tables and a feature-match image
+- **Standings**: live standings; click any player for their match history
+- **Top 8**: the top 8 race (locked / alive / out on points) and the live bracket
+- **Matchups**: deck-vs-deck records for the event
+- **Team**: follow your own players by name tag (e.g. BDST)
+- **Season**: deck trends across events saved to the archive
+- **Stream**: transparent overlays for OBS (standings, feature match, bracket, decks)
+- **Images**: deck breakdown, top 8 standings, top 8 race, bracket, round recap, feature match and team, in 16:9 or 4:5
 
-The fuller report (leader and base boards, aspects, top cut, round-by-round, pairings and win rates) is saved at the `full-report-v1` git tag, ready to bring back.
+You can replay any finished event round by round, turn on auto-refresh, and install the site on your phone.
 
-Everything runs in the browser. Uploaded files never leave your computer.
+Everything runs in the browser. Uploaded files stay on your device unless an organiser chooses to share decklists.
 
 ## Following a live tournament
 
@@ -22,9 +30,27 @@ melee.gg doesn't let other websites read its data from the browser, so live stan
 cd worker && npx wrangler@3.114.0 deploy
 ```
 
+## Organiser tools
+
+Under **Follow live → Organiser tools**, the organiser passcode unlocks sharing decklists (so viewers don't need the CSV) and saving events to the season archive. Shared data lives in Cloudflare Workers KV behind the relay.
+
+## Staging
+
+New features are tested at https://bdst-meta-staging.pages.dev before going live. It uses its own relay (`bdst-melee-relay-staging`) and storage.
+
+```bash
+cd worker && npx wrangler@3.114.0 deploy --env staging
+```
+
 ## Files
 
-- `index.html`: the whole app
+- `index.html`, `css/app.css`: page and styles
+- `js/core.js`: cards, parsing and deck grouping
+- `js/data.js`: live data, replay, race, matchups, recap, sharing and archive
+- `js/ui.js`: tabs, screens and controls
+- `js/images.js`: all shareable images
+- `js/overlay.js`: stream overlays
+- `sw.js`, `manifest.webmanifest`, `icons/`: installable app
 - `worker/`: the Cloudflare Worker that relays live standings from melee.gg
 - `cards.js`: leader and base names, aspects, art thumbnails and generic-base families from [swu-db.com](https://swu-db.com)
 - `art/`: larger leader art, loaded only when an image is generated

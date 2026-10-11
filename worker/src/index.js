@@ -1,26 +1,41 @@
 // BDST melee.gg relay.
 //
 // melee.gg doesn't let other websites read its data from the browser (no CORS), so the meta report
-// asks this worker instead. It answers only two questions, for numeric IDs, so it can't be used as
+// asks this worker instead. Reads from melee.gg are limited to numeric IDs, so it can't be used as
 // a general-purpose proxy:
-//   GET /tournament/:id  -> { id, name, rounds: [{ id, name, started, completed }] }
-//   GET /standings/:roundId -> { roundId, players: [{ rank, playerId, name, username, record, points, status }] }
-//   GET /matches/:roundId -> { roundId, matches: [{ table, hasResult, result, players: [{ playerId, name, gameWins }] }] }
+//   GET /tournament/:id      -> { id, name, date, rounds: [{ id, name, started, completed }] }
+//   GET /standings/:roundId  -> { roundId, players: [{ rank, playerId, name, username, record, points, status }] }
+//   GET /matches/:roundId    -> { roundId, matches: [{ table, hasResult, result, players: [{ playerId, name, gameWins }] }] }
+//
+// It also keeps a little shared data in Workers KV (binding DATA), so an organiser can share decklists
+// and archive finished events for everyone. Writes need the organiser passcode (secret ADMIN_KEY):
+//   GET /decks/:tid          -> { tid, updated, rows: [[playerId, name, leader, base, known, decklistId]] }
+//   PUT /decks/:tid          (organiser) same shape
+//   GET /archive             -> { events: [{ id, name, date, players }] }
+//   GET /archive/:tid        -> the saved event
+//   PUT /archive/:tid        (organiser) { id, name, date, players: [...], top8: [...], champion }
+//   DELETE /archive/:tid     (organiser)
+//   GET /admin/check         (organiser) -> { ok: true } when the passcode is right
 
 const MELEE = 'https://melee.gg';
 const ALLOWED_ORIGINS = [
   'https://obi3-jedi.github.io',
+  'https://bdst-meta-staging.pages.dev',
   'http://localhost:8766',
 ];
+// Cloudflare Pages preview deployments live on <hash>.bdst-meta-staging.pages.dev
+const allowed = origin => ALLOWED_ORIGINS.includes(origin) || /^https:\/\/[a-z0-9-]+\.bdst-meta-staging\.pages\.dev$/.test(origin);
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36',
   'Accept-Language': 'en-AU,en;q=0.9',
 };
+const MAX_BODY = 1_000_000;
 
 function cors(origin) {
   return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Origin': allowed(origin) ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key',
     'Vary': 'Origin',
   };
 }
@@ -28,7 +43,7 @@ function cors(origin) {
 function json(body, status, origin, maxAge = 30) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${maxAge}`, ...cors(origin) },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': maxAge ? `public, max-age=${maxAge}` : 'no-store', ...cors(origin) },
   });
 }
 
@@ -49,7 +64,9 @@ async function tournament(id) {
     r[m[3]] = m[4] === 'True';
     rounds.set(m[1], r);
   }
-  return { id: Number(id), name, rounds: [...rounds.values()] };
+  // The first datetime on the page is the event's start
+  const start = html.match(/data-toggle="datetime"\s+data-value="(\d{4}-\d{2}-\d{2}T[^"]*)"/);
+  return { id: Number(id), name, date: start ? start[1] : null, rounds: [...rounds.values()] };
 }
 
 async function standings(roundId) {
@@ -108,21 +125,99 @@ async function matches(roundId) {
   };
 }
 
+// ---------- shared storage ----------
+function isAdmin(request, env) {
+  const given = request.headers.get('X-Admin-Key') || '';
+  const want = env.ADMIN_KEY || '';
+  if (!want || given.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ given.charCodeAt(i);
+  return diff === 0;
+}
+
+async function readBody(request) {
+  const text = await request.text();
+  if (text.length > MAX_BODY) throw Object.assign(new Error('That is too much data to save.'), { status: 413 });
+  try { return JSON.parse(text); } catch (e) { throw Object.assign(new Error('The data sent was not valid JSON.'), { status: 400 }); }
+}
+
+async function storage(request, env, path, origin) {
+  if (!env.DATA) return json({ error: 'Shared storage is not set up on this relay.' }, 501, origin, 0);
+  const method = request.method;
+  let m;
+
+  if (path === '/admin/check') {
+    return isAdmin(request, env) ? json({ ok: true }, 200, origin, 0) : json({ error: 'That organiser passcode is not right.' }, 401, origin, 0);
+  }
+
+  if ((m = path.match(/^\/decks\/(\d{1,9})$/))) {
+    const key = `decks:${m[1]}`;
+    if (method === 'GET') {
+      const v = await env.DATA.get(key, 'json');
+      return v ? json(v, 200, origin, 15) : json({ error: 'No shared decklists for this event yet.' }, 404, origin, 15);
+    }
+    if (method === 'PUT') {
+      if (!isAdmin(request, env)) return json({ error: 'That organiser passcode is not right.' }, 401, origin, 0);
+      const body = await readBody(request);
+      if (!Array.isArray(body.rows)) return json({ error: 'Expected a list of decklists.' }, 400, origin, 0);
+      const value = { tid: Number(m[1]), updated: new Date().toISOString(), rows: body.rows.slice(0, 5000) };
+      await env.DATA.put(key, JSON.stringify(value));
+      return json(value, 200, origin, 0);
+    }
+  }
+
+  if (path === '/archive' && method === 'GET') {
+    const index = (await env.DATA.get('archive:index', 'json')) || [];
+    return json({ events: index }, 200, origin, 15);
+  }
+
+  if ((m = path.match(/^\/archive\/(\d{1,9})$/))) {
+    const key = `archive:${m[1]}`;
+    if (method === 'GET') {
+      const v = await env.DATA.get(key, 'json');
+      return v ? json(v, 200, origin, 60) : json({ error: 'That event is not in the archive.' }, 404, origin, 15);
+    }
+    if (!isAdmin(request, env)) return json({ error: 'That organiser passcode is not right.' }, 401, origin, 0);
+    let index = (await env.DATA.get('archive:index', 'json')) || [];
+    index = index.filter(e => String(e.id) !== m[1]);
+    if (method === 'PUT') {
+      const body = await readBody(request);
+      if (!Array.isArray(body.players)) return json({ error: 'Expected the event’s players.' }, 400, origin, 0);
+      const value = { ...body, id: Number(m[1]), saved: new Date().toISOString() };
+      await env.DATA.put(key, JSON.stringify(value));
+      index.push({ id: value.id, name: String(value.name || `Tournament ${m[1]}`), date: value.date || value.saved, players: value.players.length });
+      index.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      await env.DATA.put('archive:index', JSON.stringify(index));
+      return json({ ok: true, events: index }, 200, origin, 0);
+    }
+    if (method === 'DELETE') {
+      await env.DATA.delete(key);
+      await env.DATA.put('archive:index', JSON.stringify(index));
+      return json({ ok: true, events: index }, 200, origin, 0);
+    }
+  }
+  return null;
+}
+
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors(origin) });
-    if (request.method !== 'GET') return json({ error: 'Only GET is supported.' }, 405, origin);
-
     const path = new URL(request.url).pathname;
     try {
+      if (/^\/(decks|archive|admin)(\/|$)/.test(path)) {
+        const res = await storage(request, env, path, origin);
+        if (res) return res;
+        return json({ error: 'Not found.' }, 404, origin, 0);
+      }
+      if (request.method !== 'GET') return json({ error: 'Only GET is supported here.' }, 405, origin, 0);
       let m;
       if ((m = path.match(/^\/tournament\/(\d{1,9})$/))) return json(await tournament(m[1]), 200, origin);
       if ((m = path.match(/^\/standings\/(\d{1,9})$/))) return json(await standings(m[1]), 200, origin);
       if ((m = path.match(/^\/matches\/(\d{1,9})$/))) return json(await matches(m[1]), 200, origin);
       return json({ error: 'Not found. Use /tournament/<id>, /standings/<roundId> or /matches/<roundId>.' }, 404, origin, 3600);
     } catch (e) {
-      return json({ error: e.message || 'Could not reach melee.gg.' }, 502, origin, 0);
+      return json({ error: e.message || 'Could not reach melee.gg.' }, e.status || 502, origin, 0);
     }
   },
 };
