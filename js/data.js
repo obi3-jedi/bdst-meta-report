@@ -333,3 +333,98 @@ async function deleteArchived(id) {
   archiveCache.delete(id);
   return relay('/archive/' + id, { method: 'DELETE', headers: adminHeaders() });
 }
+
+// ---------- Take 30 live base counters (Firebase Realtime Database) ----------
+// Take 30 broadcasts a read-only Firebase JSON link per app. Firebase streams every change to that URL
+// (server-sent events), so the overlay updates the moment a base is hit.
+function take30Url(link) {
+  let u; try { u = new URL(String(link || '').trim()); } catch (e) { return null; }
+  const localTest = location.hostname === 'localhost' && u.hostname === 'localhost';   // local test stand-in only
+  if (!localTest && (u.protocol !== 'https:' || !/(\.firebaseio\.com|\.firebasedatabase\.app)$/i.test(u.hostname))) return null;
+  if (!u.pathname.endsWith('.json')) u.pathname = u.pathname.replace(/\/?$/, '.json');
+  return u.toString();
+}
+
+// Apply one Firebase streaming event ("put" replaces at a path, "patch" merges) to our copy of the data.
+function fbApply(tree, path, data, patch) {
+  const parts = String(path || '/').split('/').filter(Boolean);
+  if (!parts.length) return patch ? { ...(tree && typeof tree === 'object' ? tree : {}), ...data } : data;
+  const root = tree && typeof tree === 'object' ? tree : {};
+  let node = root;
+  for (const p of parts.slice(0, -1)) { if (!node[p] || typeof node[p] !== 'object') node[p] = {}; node = node[p]; }
+  const last = parts[parts.length - 1];
+  if (patch) node[last] = { ...(node[last] && typeof node[last] === 'object' ? node[last] : {}), ...data };
+  else if (data === null) delete node[last];
+  else node[last] = data;
+  return root;
+}
+
+// Find each player's base health in Take 30's data. The layout isn't documented, so this looks for two
+// player-like entries (player1/player2, p1/p2, players[0]/[1], left/right…) with a health or damage number.
+// Returns [{ health } | { damage }, …] for the two players, in Take 30's order, or null.
+function take30Health(tree) {
+  if (!tree || typeof tree !== 'object') return null;
+  const num = v => typeof v === 'number' ? v : (typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : null);
+  const HEALTH = /(remaining|health|hp|life)$/i, DAMAGE = /damage|dmg/i, START = /^(start|starting|max|total|initial|base)(ing)?(health|hp|life)?$/i;
+  const readPlayer = o => {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+    const flat = [];
+    for (const [k, v] of Object.entries(o)) {
+      if (num(v) != null) flat.push([k, num(v)]);
+      else if (v && typeof v === 'object' && !Array.isArray(v)) for (const [k2, v2] of Object.entries(v)) if (num(v2) != null) flat.push([k + '.' + k2, num(v2)]);
+    }
+    const health = flat.find(([k]) => HEALTH.test(k.split('.').pop()) && !START.test(k.split('.').pop()) && !DAMAGE.test(k));
+    if (health) return { health: health[1], key: health[0] };
+    const dmg = flat.find(([k]) => DAMAGE.test(k.split('.').pop()) && !/history|log/i.test(k));
+    if (dmg) {
+      const start = flat.find(([k]) => START.test(k.split('.').pop()));
+      return start ? { health: start[1] - dmg[1], key: dmg[0] } : { damage: dmg[1], key: dmg[0] };
+    }
+    return null;
+  };
+  const order = k => { const s = String(k).toLowerCase(); return /left|one|^0$|1(?!\d)|a$/.test(s) && !/2|two|right/.test(s) ? 0 : 1; };
+  let best = null;
+  const walk = (o, depth, path) => {
+    if (!o || typeof o !== 'object' || depth > 5 || best) return;
+    const entries = Array.isArray(o) ? o.map((v, i) => [String(i), v]) : Object.entries(o);
+    const players = entries.map(([k, v]) => [k, readPlayer(v)]).filter(([, r]) => r);
+    if (players.length >= 2) {
+      const two = players.slice(0, 2).sort((x, y) => order(x[0]) - order(y[0]) || x[0].localeCompare(y[0], undefined, { numeric: true }));
+      best = two.map(([k, r]) => ({ ...r, key: path.concat(k, r.key).join('.') }));
+      return;
+    }
+    for (const [k, v] of entries) walk(v, depth + 1, path.concat(k));
+  };
+  walk(tree, 0, []);
+  if (best) return best;
+  // Flat layout: keys like p1Health / player2_damage / leftHp
+  const flat = [];
+  const leaves = (o, path) => { for (const [k, v] of Object.entries(o || {})) { if (num(v) != null) flat.push([path.concat(k).join('.'), num(v)]); else if (v && typeof v === 'object') leaves(v, path.concat(k)); } };
+  leaves(tree, []);
+  const pick = re => flat.find(([k]) => re.test(k));
+  for (const kind of ['health', 'damage']) {
+    const re1 = kind === 'health' ? /(p|player|team)[\s_-]?1\D*(health|hp|life|remaining)|left\D*(health|hp|life|remaining)/i : /(p|player|team)[\s_-]?1\D*(damage|dmg)|left\D*(damage|dmg)/i;
+    const re2 = kind === 'health' ? /(p|player|team)[\s_-]?2\D*(health|hp|life|remaining)|right\D*(health|hp|life|remaining)/i : /(p|player|team)[\s_-]?2\D*(damage|dmg)|right\D*(damage|dmg)/i;
+    const a = pick(re1), b = pick(re2);
+    if (a && b) return [{ [kind]: a[1], key: a[0] }, { [kind]: b[1], key: b[0] }];
+  }
+  return null;
+}
+
+// Listen to a Take 30 link. Calls onData(tree) on every change and onState('live'|'reconnecting'|'stopped').
+function listenTake30(url, onData, onState) {
+  let tree = null, es = null, closed = false;
+  try {
+    es = new EventSource(url);
+    const handle = patch => e => {
+      try { const m = JSON.parse(e.data); tree = fbApply(tree, m.path, m.data, patch); onData(tree); onState('live'); } catch (err) {}
+    };
+    es.addEventListener('put', handle(false));
+    es.addEventListener('patch', handle(true));
+    // The app stops broadcasting (or the link is withdrawn)
+    es.addEventListener('cancel', () => onState('stopped'));
+    es.addEventListener('auth_revoked', () => onState('stopped'));
+    es.onerror = () => { if (!closed) onState('reconnecting'); };
+  } catch (e) { onState('stopped'); }
+  return () => { closed = true; es?.close(); };
+}

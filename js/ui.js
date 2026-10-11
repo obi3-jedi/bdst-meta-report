@@ -419,11 +419,35 @@ function renderStream() {
     { type: 'bracket', title: 'Top 8 bracket', desc: 'The live bracket. Suggested size 1280 × 720.', extra: '' },
     { type: 'decks', title: 'Deck breakdown', desc: 'The most played decks with share. Suggested size 520 × 720.', extra: '&n=8' },
   ];
+  const t30 = take30Url(store(true, 'bdst-t30'));
+  const t30extra = t30 ? `&t30=${encodeURIComponent(t30)}${store(true, 'bdst-t30swap') ? '&t30swap=1' : ''}` : '';
   $('overlays').innerHTML = items.map(it => {
-    const url = `${base}?overlay=${it.type}&t=${tid}${it.extra}`;
+    const url = `${base}?overlay=${it.type}&t=${tid}${it.extra}${it.type === 'feature' ? t30extra : ''}`;
     return `<div class="ovl"><h4>${it.title}</h4><p>${it.desc}</p><code>${esc(url)}</code>
       <div class="row2"><button class="btn ghost sm" type="button" data-copy="${esc(url)}">Copy link</button><a href="${esc(url)}" target="_blank" rel="noopener">Preview ↗</a></div></div>`;
   }).join('');
+}
+
+// ---------- Take 30 link test ----------
+let t30stop = null;
+function testTake30() {
+  const out = $('t30-result');
+  const url = take30Url($('t30-link').value);
+  t30stop?.(); t30stop = null;
+  if (!url) { out.innerHTML = '<p class="err">That doesn’t look like a Take 30 link. It should start with https:// and end in firebaseio.com/… or firebasedatabase.app/…</p>'; return; }
+  out.innerHTML = '<p>Connecting…</p>';
+  let got = false;
+  const timer = setTimeout(() => { if (!got) out.innerHTML = '<p class="err">No data yet. Check the app is broadcasting and the link is complete.</p>'; }, 8000);
+  t30stop = listenTake30(url, tree => {
+    got = true; clearTimeout(timer);
+    const v = take30Health(tree), swap = $('t30-swap').checked;
+    const show = x => x ? (x.health != null ? `${x.health} health` : `${x.damage} damage taken`) : '–';
+    const [l, r] = v ? (swap ? [v[1], v[0]] : v) : [null, null];
+    out.innerHTML = (v
+      ? `<p class="ok">Live. Left player: <b>${esc(show(l))}</b> · Right player: <b>${esc(show(r))}</b>. Change a base in the app and these should update straight away.</p><p class="hint">Read from <code>${esc(v[0].key)}</code> and <code>${esc(v[1].key)}</code>.</p>`
+      : '<p class="err">Connected, but I couldn’t find the base health in this data. Send a screenshot of the data below so the overlay can be matched to it.</p>')
+      + `<details><summary>Data from Take 30</summary><pre>${esc(JSON.stringify(tree, null, 2).slice(0, 4000))}</pre></details>`;
+  }, s => { if (s === 'stopped') out.insertAdjacentHTML('afterbegin', '<p class="err">Take 30 stopped broadcasting this link.</p>'); });
 }
 
 // ---------- replay banner + live status ----------
@@ -743,6 +767,11 @@ $('pair-filter').addEventListener('input', () => filterRows('pair-filter', '#pai
 $('pair-feature').addEventListener('change', renderPairings);
 $('standings-filter').addEventListener('input', () => filterRows('standings-filter', '#standings tbody tr'));
 $('team-tag').addEventListener('input', e => { store(false, 'bdst-team', e.target.value.trim()); render(); });
+$('t30-link').value = store(true, 'bdst-t30');
+$('t30-swap').checked = !!store(true, 'bdst-t30swap');
+$('t30-link').addEventListener('change', e => { store(false, 'bdst-t30', e.target.value.trim()); renderStream(); });
+$('t30-swap').addEventListener('change', e => { store(false, 'bdst-t30swap', e.target.checked ? '1' : ''); renderStream(); if (t30stop) testTake30(); });
+$('t30-test').addEventListener('click', () => { store(false, 'bdst-t30', $('t30-link').value.trim()); renderStream(); testTake30(); });
 $('asof').addEventListener('change', e => setAsOf(e.target.value || null));
 $('evname').addEventListener('input', e => { const k = state.liveId || state.tid; if (!state.sample && k) store(false, 'swu-ev-' + k, e.target.value); });
 
