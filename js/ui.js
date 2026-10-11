@@ -415,7 +415,7 @@ function renderStream() {
   const base = location.origin + location.pathname;
   const items = [
     { type: 'standings', title: 'Standings', desc: 'Top 8 standings with decks. Suggested size 520 × 720.', extra: '&n=8' },
-    { type: 'feature', title: 'Feature match', desc: 'The match at table 1 with both decks, as a lower third. Change table=1 for another table. Suggested size 1280 × 200.', extra: '&table=1' },
+    { type: 'feature', title: 'Feature match', desc: 'A banner across the top of the screen for the match at table 1: players, decks, game-win pips and base counters, thin in the middle so the board stays clear. Change table=1 for another table, add &pos=bottom to put it at the bottom. Browser Source size 1920 × 1080.', extra: '&table=1' },
     { type: 'bracket', title: 'Top 8 bracket', desc: 'The live bracket. Suggested size 1280 × 720.', extra: '' },
     { type: 'decks', title: 'Deck breakdown', desc: 'The most played decks with share. Suggested size 520 × 720.', extra: '&n=8' },
   ];

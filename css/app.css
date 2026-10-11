@@ -428,3 +428,34 @@ body.overlay #app, body.overlay .modal, body.overlay .toast { display: none !imp
 .ov-side > div { min-width: 0; flex: 1; }
 .ov-side span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) { .ov-side .thumb { width: 56px; height: 56px; } .ov-side b { font-size: 22px; } .ov-mid { font-size: 26px; } }
+
+/* Feature match banner (1920 × 1080 OBS canvas): tall at the ends, raking in to a thin centre strip.
+   Every size is in --u (1/1920 of the width), so it scales with the browser source. */
+#overlay.fm-mode { padding: 0; }
+.fm { --u: calc(100vw / 1920); position: fixed; left: 0; right: 0; top: 0; height: calc(156 * var(--u)); color: #fff; }
+.fm.bottom { top: auto; bottom: 0; }
+.fm-shape { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 calc(6 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, .45)); }
+.fm.bottom .fm-shape { transform: scaleY(-1); }
+.fm-side { position: absolute; top: 0; height: calc(150 * var(--u)); width: calc(590 * var(--u)); display: flex; align-items: center; gap: calc(18 * var(--u)); padding-inline: calc(22 * var(--u)) calc(30 * var(--u)); }
+.fm.bottom .fm-side { top: auto; bottom: 0; }
+.fm-side.left { left: 0; }
+.fm-side.right { right: 0; flex-direction: row-reverse; text-align: right; padding-inline: calc(30 * var(--u)) calc(22 * var(--u)); }
+.fm-art { position: relative; flex: none; width: calc(116 * var(--u)); height: calc(116 * var(--u)); border-radius: calc(10 * var(--u)); overflow: hidden; border: calc(2 * var(--u)) solid rgba(255, 255, 255, .25); background: #2a0a0c; }
+.fm-art .fm-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
+.fm-strip { position: absolute; left: 0; right: 0; bottom: 0; height: calc(16 * var(--u)); background: #2a0a0c center / cover no-repeat; border-top: calc(2 * var(--u)) solid rgba(10, 3, 5, .9); }
+.fm-info { flex: 1; min-width: 0; display: grid; gap: calc(4 * var(--u)); }
+.fm-info b { font: italic 800 calc(42 * var(--u))/1 var(--f-display); text-transform: uppercase; letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm-deck { font: 600 calc(20 * var(--u))/1.15 var(--f-body); color: #e6cfd0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm-rec { font: 700 calc(19 * var(--u))/1 var(--f-data); color: var(--red); }
+.fm-pips { flex: none; display: flex; gap: calc(9 * var(--u)); }
+.fm-side.right .fm-pips { flex-direction: row-reverse; }
+.fm-pips i { width: calc(24 * var(--u)); height: calc(24 * var(--u)); border-radius: 50%; border: calc(3 * var(--u)) solid rgba(255, 255, 255, .5); box-sizing: border-box; }
+.fm-pips i.on { background: var(--red); border-color: var(--red); box-shadow: 0 0 calc(10 * var(--u)) rgba(255, 20, 24, .7); }
+.fm-mid { position: absolute; top: 0; left: calc(690 * var(--u)); width: calc(540 * var(--u)); height: calc(72 * var(--u)); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: calc(12 * var(--u)); }
+.fm.bottom .fm-mid { top: auto; bottom: 0; }
+.fm-hp { display: flex; align-items: center; gap: calc(10 * var(--u)); }
+.fm-hp.right { justify-content: flex-end; }
+.fm-hp b { font: 700 calc(46 * var(--u))/1 var(--f-data); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: center; }
+.fm-bsw { width: calc(46 * var(--u)); height: calc(24 * var(--u)); border-radius: calc(4 * var(--u)); background: #2a0a0c center / cover no-repeat; border: calc(2 * var(--u)) solid rgba(255, 255, 255, .3); }
+.fm-round { text-align: center; font: italic 800 calc(22 * var(--u))/1 var(--f-display); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.fm-round small { display: block; margin-top: calc(4 * var(--u)); font: 600 calc(13 * var(--u))/1 var(--f-body); letter-spacing: .1em; color: #d9b9ba; }

@@ -34,9 +34,8 @@
       const pr = roundId ? pairingsFor(roundId) : null;
       const m = pr?.rows.find(x => String(x.table) === String(table)) || pr?.rows.find(x => x.players.length === 2);
       if (!m || m.players.length < 2) { root.innerHTML = `<div class="ov-card"><div class="ov-empty">No match at table ${esc(table)} yet.</div></div>`; return; }
-      const [a, b] = m.players, da = deckOf(a), db = deckOf(b);
-      const sideHtml = (p, d, right) => `<div class="ov-side ${right ? 'right' : ''}">${art(d)}<div><b>${esc(p.name)}</b><span>${d ? esc(d.label) : ''}</span><span class="r2">${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</span></div></div>`;
-      root.innerHTML = `<div class="ov-card"><div class="ov-vs">${sideHtml(a, da, false)}<div class="ov-mid">${m.hasResult ? `${a.gameWins}–${b.gameWins}` : 'VS'}<small>${esc(pr.round.name)} · Table ${esc(m.table)}</small></div>${sideHtml(b, db, true)}</div></div>`;
+      root.classList.add('fm-mode');
+      root.innerHTML = featureBanner(pr.round, m, params.get('pos') === 'bottom' ? 'bottom' : 'top');
     } else if (type === 'bracket') {
       const br = v.bracket;
       if (!br) { root.innerHTML = `<div class="ov-card"><div class="ov-empty">The bracket appears after the first Swiss round.</div></div>`; return; }
@@ -50,6 +49,41 @@
     } else {
       root.innerHTML = `<div class="ov-card"><div class="ov-empty">Unknown overlay “${esc(type)}”. Use standings, feature, bracket or decks.</div></div>`;
     }
+  }
+
+  // Feature match banner for a 1920 × 1080 canvas: tall at the ends for the players, raking in to a thin
+  // centre strip (base counters, round and table) so the middle of the board stays visible.
+  const ASPECT_VAR = { Vigilance: 'var(--vig)', Command: 'var(--com)', Aggression: 'var(--agg)', Cunning: 'var(--cun)', Heroism: 'var(--her)', Villainy: '#000' };
+  function featureBanner(round, m, pos) {
+    const BEST_OF = 3, need = Math.ceil(BEST_OF / 2);
+    const side = (p, right) => {
+      const d = deckOf(p);
+      const gi = d ? genericInfo.get(d.base) : null;
+      const bc = d ? card('bases', d.rawBase) : null;
+      const strip = gi ? `<i class="fm-strip" style="background:${ASPECT_VAR[gi.aspect]}"></i>` : bc?.i ? `<i class="fm-strip" style="background-image:url('${bc.i}')"></i>` : '<i class="fm-strip"></i>';
+      const pipsHtml = Array.from({ length: need }, (_, i) => `<i class="${i < (p.gameWins || 0) ? 'on' : ''}"></i>`).join('');
+      return `<div class="fm-side ${right ? 'right' : 'left'}">
+        <div class="fm-art">${d ? leaderImg(d.leader, 'fm-img') : '<span class="fm-img"></span>'}${strip}</div>
+        <div class="fm-info"><b>${esc(p.name)}</b><span class="fm-deck">${d ? esc(d.label) : ''}</span>
+          <span class="fm-rec">${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</span></div>
+        <div class="fm-pips" title="Games won">${pipsHtml}</div></div>`;
+    };
+    // Base counters: the base's printed health until a live counter (e.g. Take 30) is linked
+    const hp = (p, right) => {
+      const d = deckOf(p);
+      const gi = d ? genericInfo.get(d.base) : null;
+      const bc = d ? card('bases', d.rawBase) : null;
+      const sw = gi ? `<span class="fm-bsw" style="background:${ASPECT_VAR[gi.aspect]}"></span>` : bc?.i ? `<span class="fm-bsw" style="background-image:url('${bc.i}')"></span>` : '<span class="fm-bsw"></span>';
+      return `<div class="fm-hp ${right ? 'right' : 'left'}" data-hp-player="${esc(p.id)}">${right ? '' : sw}<b>${bc?.hp ?? '–'}</b>${right ? sw : ''}</div>`;
+    };
+    const [a, b] = m.players;
+    // The banner outline: full height at the ends, raking down to a thin strip in the middle
+    const shape = `<svg class="fm-shape" viewBox="0 0 1920 156" preserveAspectRatio="none" aria-hidden="true">
+      <polygon points="0,0 1920,0 1920,150 1330,150 1240,72 680,72 590,150 0,150" fill="rgba(10,3,5,.9)"/>
+      <polyline points="0,150 590,150 680,72 1240,72 1330,150 1920,150" fill="none" stroke="#ff1418" stroke-width="5" stroke-linejoin="round"/></svg>`;
+    return `<div class="fm ${pos}">${shape}${side(a, false)}
+      <div class="fm-mid">${hp(a, false)}<div class="fm-round">${esc(round.name)}<small>Table ${esc(m.table ?? '')}</small></div>${hp(b, true)}</div>
+      ${side(b, true)}</div>`;
   }
 
   async function tick(full) {
