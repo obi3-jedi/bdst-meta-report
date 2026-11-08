@@ -342,14 +342,16 @@
         ? `<img src="${esc(fullArt(c))}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fs-ph',textContent:${esc(JSON.stringify(fallback))}}))">`
         : `<div class="fs-ph">${esc(fallback)}</div>`}</figure>`;
       const pips = Array.from({ length: need }, (_, i) => `<i class="${i < gameWinsOf(p, show) ? 'on' : ''}"></i>`).join('');
-      const lg = logoImg(right ? 'creator' : 'store', 'fs-logo');
+      // Both logos sit at the bottom of the right panel; the left keeps the same space so the base boxes line up
+      const logos = logoImg('store', 'fs-logo') + logoImg('creator', 'fs-logo');
+      const lg = logos ? `<div class="fs-logo-row">${right ? logos : ''}</div>` : '';
       return `<div class="fs-col ${right ? 'right' : 'left'} ${lg ? 'with-logo' : ''}" style="${right ? 'right' : 'left'}:0;width:calc(${L} * var(--u))">
         <div class="fs-name"><b>${esc(p.name)}</b>
           <div class="fs-line"><span>${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</span><span class="fm-pips" title="Games won">${pips}</span></div></div>
         ${cams ? '<div class="fs-cam" aria-hidden="true"></div>' : ''}
         <div class="fs-cards">${img(lc, 'Leader', d ? d.leader : 'Leader')}${img(bc, 'Base', d ? d.rawBase : 'Base')}</div>
         <div class="fm-hp fs-hp ${baseTone(bc)}" data-side="${right ? 1 : 0}" data-printed="${total}"><span class="fm-dmg"><b>0</b><small>/${total || '–'}</small></span><span class="fs-hp-l">Base damage</span></div>
-        ${lg ? `<div class="fs-logo-row">${lg}</div>` : ''}
+        ${lg}
       </div>`;
     };
     const [a, b] = m.players;
@@ -357,7 +359,7 @@
     return `<div class="fs ${cams ? 'cams' : ''}">
       ${col(a, false)}${col(b, true)}
       <div class="fs-top" style="left:calc(${L} * var(--u));width:calc(${R - L} * var(--u))"><div class="fs-plate">
-        <span>${esc(round.name)}</span><i></i><span>Table ${esc(m.table ?? '')}</span><span class="fs-clock" hidden></span><i class="fm-live" title="Take 30 base counters"></i></div>
+        <span>${esc(round.name)}</span><i></i><span class="fs-table">Table ${esc(m.table ?? '')}</span><span class="fs-clock" hidden></span><i class="fm-live" title="Take 30 base counters"></i></div>
         <div class="fm-flash" hidden>New game</div></div>
       ${ev ? `<div class="fs-bottom" style="left:calc(${L} * var(--u));width:calc(${R - L} * var(--u))"><div class="fs-plate small">${esc(ev)}</div></div>` : ''}
     </div>`;
@@ -365,9 +367,10 @@
   // Round clock (started from Live control): counts down on the feature match; "Time" when it runs out
   function tickClock() {
     const el = root.querySelector('.fs-clock'); if (!el) return;
-    const c = featureSel?.clock;
-    el.hidden = !c?.endsAt;
-    if (!c?.endsAt) return;
+    const c = roundClock(featureSel);
+    el.hidden = !c;
+    const tbl = root.querySelector('.fs-table'); if (tbl) tbl.hidden = !!c;   // the timer takes the table number's place
+    if (!c) return;
     const left = Math.round((c.endsAt - Date.now()) / 1000);
     el.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Time';
     el.classList.toggle('over', left <= 0);

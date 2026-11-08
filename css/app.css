@@ -828,3 +828,7 @@ body.on-hub-page header { align-items: center; }
 .fs-hp.low { animation: fs-low 1.2s ease-in-out infinite; }
 @keyframes fs-low { 50% { box-shadow: 0 0 calc(44 * var(--u)) var(--bc), inset 0 0 0 calc(5 * var(--u)) #fff; } }
 @media (prefers-reduced-motion: reduce) { .fs-hp.low { animation: none; box-shadow: inset 0 0 0 calc(5 * var(--u)) #fff; } }
+.fs-logo-row { gap: calc(18 * var(--u)); }
+.fs-logo-row .fs-logo { max-width: calc(50% - 9 * var(--u)); }
+.fs-col.left .fs-logo-row { border-top-color: rgba(255, 255, 255, .12); }
+.fs-plate .fs-clock { padding-left: 0; border-left: 0; font-size: calc(32 * var(--u)); }

@@ -365,10 +365,10 @@ function markReplay() {
 // Round clock: shown on the feature match (side panels layout)
 function markClock() {
   const el = $('lc-clock'); if (!el) return;
-  const c = acct.live?.value?.clock;
-  if (!c?.endsAt) { el.textContent = 'off'; el.className = 'lc-clock'; return; }
+  const c = String(state.liveId) === String(acct.current?.meleeId) ? roundClock(acct.live?.value) : (acct.live?.value?.clock?.endsAt ? { ...acct.live.value.clock, source: 'manual' } : null);
+  if (!c) { el.textContent = 'off · shows the table number'; el.className = 'lc-clock'; return; }
   const left = Math.round((c.endsAt - Date.now()) / 1000);
-  el.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} left` : 'Time';
+  el.textContent = (left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} left` : 'Time') + (c.source === 'melee' ? ' · from melee.gg' : '');
   el.className = 'lc-clock on' + (left <= 0 ? ' over' : '');
 }
 setInterval(markClock, 1000);

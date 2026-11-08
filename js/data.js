@@ -25,6 +25,7 @@ async function loadLive(tid, { full = false } = {}) {
   const before = new Set((L.rounds || []).filter(r => r.completed).map(r => r.id));
   L.name = t.name;
   L.date = t.date || null;
+  L.timer = t.timer || null;   // melee.gg's own countdown, when the organiser has it on
   L.rounds = t.rounds.map(r => ({ ...r, swiss: isSwissRound(r) }));
   const started = L.rounds.filter(r => r.started);
   const needMatches = started.filter(r => !L.final.has(r.id));
@@ -569,4 +570,14 @@ async function saveStreamAsOf(tid, roundId) {
 // Round clock on the feature match: { mins } starts it, { add } adjusts it, null clears it
 async function saveClock(tid, clock) {
   return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ clock }) });
+}
+// The round clock to show: the one started in Live control, otherwise melee.gg's "until the round ends" countdown
+// while a round is being played. { endsAt, source: 'manual' | 'melee' } or null.
+function roundClock(sel = state.featureSel) {
+  if (sel?.clock?.endsAt) return { endsAt: sel.clock.endsAt, source: 'manual' };
+  const t = state.live?.timer, v = state.view;
+  if (!t?.endsAt || state.asOf) return null;
+  const roundTimer = /round ends/i.test(t.label || '') || (!/start|registration/i.test(t.label || '') && !!v?.current);
+  if (!roundTimer || t.endsAt < Date.now() - 15 * 60000) return null;
+  return { endsAt: t.endsAt, source: 'melee' };
 }

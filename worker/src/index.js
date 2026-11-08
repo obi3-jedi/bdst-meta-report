@@ -81,7 +81,24 @@ async function tournament(id) {
   }
   // The first datetime on the page is the event's start
   const start = html.match(/data-toggle="datetime"\s+data-value="(\d{4}-\d{2}-\d{2}T[^"]*)"/);
-  return { id: Number(id), name, date: start ? start[1] : null, rounds: [...rounds.values()] };
+  return { id: Number(id), name, date: start ? start[1] : null, rounds: [...rounds.values()], timer: meleeTimer(html) };
+}
+
+// melee.gg's public countdown at the top of the event page, when the organiser switches it on
+// (e.g. "until the round ends"). Returns { endsAt, label } or null.
+function meleeTimer(html) {
+  const tag = html.match(/<[^>]*\bid="tournament-headline-countdown"[^>]*>/);
+  if (!tag) return null;
+  const v = tag[0].match(/data-value="([^"]+)"/);
+  if (!v) return null;
+  let endsAt = null;
+  const ms = v[1].match(/Date\((-?\d+)/);
+  if (ms) endsAt = Number(ms[1]);
+  else if (!isNaN(Date.parse(v[1]))) endsAt = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(v[1]) ? v[1] : v[1] + 'Z');
+  if (!endsAt) return null;
+  const lab = html.match(/<([a-z0-9]+)\b[^>]*\bid="tournament-headline-countdown-label"[^>]*>([\s\S]*?)<\/\1>/i);
+  const label = lab ? decode(lab[2].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() : '';
+  return { endsAt, label };
 }
 
 async function standings(roundId) {
