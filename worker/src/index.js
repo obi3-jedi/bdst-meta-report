@@ -18,9 +18,11 @@
 //   GET /admin/check         (organiser) -> { ok: true } when the passcode is right
 //   GET /hri/teams           -> { teams: [{ slug, name, abbreviation, members, rating, logo }] } from hri.gg (cached 1 h)
 //   GET /hri/teams/:slug     -> { slug, name, abbreviation, logo, links, roster: [{ username, displayName, rating, tier, membership }] } (cached 15 min)
-//   GET /feature/:tid        -> { tid, table, player, updated } which match the stream overlay features
+//   GET /feature/:tid        -> { tid, table, player, show, scene, updated } what's on stream
+//   GET /feature/:tid/live   (WebSocket) the same value, pushed whenever it changes
 //   PUT /feature/:tid        (organiser) { table } or { player }, optionally { round } to pin a past round;
-//                            or { match, swap, wins } to swap sides / set game wins for the match on stream
+//                            or { match, swap, wins } to swap sides / set game wins for the match on stream;
+//                            or { scene: { mode: camera|feature|break|slide|hold, slide?, title?, until? } } for the program link
 //                            (or {} to go back to the overlay link's table)
 //
 // The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
@@ -257,17 +259,48 @@ async function hriTeam(slug) {
   };
 }
 
-// One tiny Durable Object per tournament holding the feature match choice.
+// One tiny Durable Object per tournament holding what's on stream: the feature match choice, on-stream tweaks
+// (swap sides, game wins) and the program scene. Overlays and control pages keep a WebSocket open to it
+// (GET /feature/:tid/live) and get the whole value pushed the moment it changes.
 export class FeatureMatch {
   constructor(ctx) { this.ctx = ctx; }
   async fetch(request) {
+    if (request.headers.get('Upgrade') === 'websocket') {
+      const [client, server] = Object.values(new WebSocketPair());
+      this.ctx.acceptWebSocket(server);
+      server.send(JSON.stringify((await this.ctx.storage.get('feature')) || {}));
+      return new Response(null, { status: 101, webSocket: client });
+    }
     if (request.method === 'PUT') {
       const value = await request.json();
       await this.ctx.storage.put('feature', value);
+      const msg = JSON.stringify(value);
+      for (const ws of this.ctx.getWebSockets()) { try { ws.send(msg); } catch (e) {} }
       return Response.json(value);
     }
     return Response.json((await this.ctx.storage.get('feature')) || {});
   }
+  webSocketMessage(ws, msg) { if (msg === 'ping') ws.send('pong'); }
+  webSocketClose(ws, code) { try { ws.close(code, 'bye'); } catch (e) {} }
+  webSocketError(ws) { try { ws.close(1011, 'error'); } catch (e) {} }
+}
+
+// Program scenes for the single OBS link (?overlay=program): what the one Browser Source shows
+const SCENE_MODES = ['camera', 'feature', 'break', 'slide', 'hold'];
+const SCENE_SLIDES = ['upnext', 'standings', 'decks', 'race', 'bracket', 'recap', 'aspects'];
+function cleanScene(sc) {
+  if (!sc || typeof sc !== 'object' || !SCENE_MODES.includes(sc.mode)) throw Object.assign(new Error('That scene is not valid.'), { status: 400 });
+  const out = { mode: sc.mode, at: new Date().toISOString() };
+  if (sc.mode === 'slide') {
+    if (!SCENE_SLIDES.includes(sc.slide)) throw Object.assign(new Error('That slide is not valid.'), { status: 400 });
+    out.slide = sc.slide;
+  }
+  if (sc.mode === 'hold') {
+    out.title = String(sc.title || 'Back soon').slice(0, 40);
+    const until = Number(sc.until);
+    if (until && until > Date.now() && until < Date.now() + 6 * 3600_000) out.until = until;
+  }
+  return out;
 }
 
 async function feature(request, env, tid, origin) {
@@ -277,11 +310,14 @@ async function feature(request, env, tid, origin) {
   if (request.method === 'PUT') {
     if (!(await allowedFor(request, env, tid, 'stream'))) return json({ error: DENIED }, 401, origin, 0);
     const body = await readBody(request);
+    const cur = await (await stub.fetch('https://do/feature')).json();
+    const save = async value => json({ tid: Number(tid), ...(await (await stub.fetch('https://do/feature', { method: 'PUT', body: JSON.stringify({ ...value, updated: new Date().toISOString() }) })).json()) }, 200, origin, 0);
+    // Switch the program scene: { scene: { mode, slide?, title?, until? } }
+    if (body.scene && body.table == null && body.player == null && body.match == null) return save({ ...cur, scene: cleanScene(body.scene) });
     // On-stream tweaks for the match showing now: { match: "<roundId>|<table>", swap, wins: { <playerId>: n } }.
     // They're kept with the choice and only apply while that match is on screen.
     if (body.match != null && body.table == null && body.player == null) {
       if (!/^\d{1,12}\|\d{1,4}$/.test(String(body.match))) return json({ error: 'That match is not valid.' }, 400, origin, 0);
-      const cur = await (await stub.fetch('https://do/feature')).json();
       const prev = cur.show?.match === String(body.match) ? cur.show : { match: String(body.match), swap: false, wins: {} };
       const show = { ...prev, wins: { ...prev.wins } };
       if (typeof body.swap === 'boolean') show.swap = body.swap;
@@ -290,16 +326,15 @@ async function feature(request, env, tid, origin) {
           if (/^\d{1,12}$/.test(k) && Number.isInteger(n) && n >= 0 && n <= 3) show.wins[k] = n;
         }
       }
-      const saved = await (await stub.fetch('https://do/feature', { method: 'PUT', body: JSON.stringify({ ...cur, show, updated: new Date().toISOString() }) })).json();
-      return json({ tid: Number(tid), ...saved }, 200, origin, 0);
+      return save({ ...cur, show });
     }
-    const value = { updated: new Date().toISOString() };
+    // A new feature match choice (the scene carries over)
+    const value = cur.scene ? { scene: cur.scene } : {};
     if (body.table != null && /^\d{1,4}$/.test(String(body.table))) value.table = Number(body.table);
     else if (body.player != null && /^\d{1,12}$/.test(String(body.player))) value.player = String(body.player);
     // A choice made while replaying an earlier round pins the overlay to that round
     if ((value.table != null || value.player) && body.round != null && /^\d{1,12}$/.test(String(body.round))) value.round = Number(body.round);
-    const saved = await (await stub.fetch('https://do/feature', { method: 'PUT', body: JSON.stringify(value) })).json();
-    return json({ tid: Number(tid), ...saved }, 200, origin, 0);
+    return save(value);
   }
   return json({ error: 'Use GET or PUT.' }, 405, origin, 0);
 }
@@ -316,6 +351,14 @@ export default {
       if (path === '/hri/teams') return json(await hriTeams(), 200, origin, 600);
       const ht = path.match(/^\/hri\/teams\/([a-z0-9-]{1,40})$/i);
       if (ht) return json(await hriTeam(ht[1].toLowerCase()), 200, origin, 300);
+      // Live updates for overlays and control pages (WebSocket)
+      const lv = path.match(/^\/feature\/(\d{1,9})\/live$/);
+      if (lv) {
+        if (request.headers.get('Upgrade') !== 'websocket') return json({ error: 'Connect with a WebSocket.' }, 426, origin, 0);
+        if (origin && !allowed(origin)) return new Response('Not allowed', { status: 403 });
+        if (!env.FEATURE) return new Response('Not set up', { status: 501 });
+        return env.FEATURE.get(env.FEATURE.idFromName(lv[1])).fetch(request);
+      }
       const fm = path.match(/^\/feature\/(\d{1,9})$/);
       if (fm) return await feature(request, env, fm[1], origin);
       if (/^\/(decks|archive|admin)(\/|$)/.test(path)) {

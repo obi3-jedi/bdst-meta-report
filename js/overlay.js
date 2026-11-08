@@ -1,9 +1,13 @@
-// Stream overlays: ?overlay=standings|feature|bracket|decks&t=<tournament>
+// Stream overlays: ?overlay=standings|feature|bracket|decks|break|program&t=<tournament> (or &k=<tournament overlay key>)
 // A transparent page with just the overlay, for an OBS Browser Source. It refreshes itself every minute.
+// "program" is the single link: it shows whichever scene the stream team picks in Live control
+// (camera only, feature match, break screen, one slide, or a starting/back soon card).
 (async function () {
   const params = new URLSearchParams(location.search);
-  const type = params.get('overlay');
-  if (!type) return;
+  const linkType = params.get('overlay');
+  if (!linkType) return;
+  let type = linkType;
+  const preview = params.get('preview') === '1';   // a preview in the control page: never writes to Take 30
   // A tournament's overlay link (&k=<key>) loads its event and the team's saved stream settings,
   // and reloads itself when they change (e.g. someone pastes a new Take 30 link)
   const key = params.get('k');
@@ -46,10 +50,19 @@
   const head = (title, meta) => `<div class="ov-title"><img src="bdst-logo.png" alt="BDST">${esc(title)}<small>${esc(meta || '')}</small></div>`;
   const art = d => d ? leaderImg(d.leader) : '<span class="thumb" aria-hidden="true"></span>';
 
+  // The program link's scene → what to draw
+  const sceneType = () => {
+    const sc = featureSel?.scene;
+    return ['camera', 'feature', 'break', 'slide', 'hold'].includes(sc?.mode) ? sc.mode : 'feature';
+  };
   function draw() {
     computeView();
     const v = state.view, L = state.live;
+    if (linkType === 'program') type = sceneType();
+    if (type === 'camera') { root.className = ''; root.innerHTML = ''; return; }
     if (type === 'break') { breakDraw(); return; }
+    if (type === 'slide') { slideDraw(); return; }
+    if (type === 'hold') { holdDraw(); return; }
     if (!v) { root.innerHTML = `<div class="ov-card"><div class="ov-empty">Waiting for melee.gg…</div></div>`; return; }
     if (type === 'standings') {
       const ps = currentPlayers().filter(p => !isDropped(p)).slice(0, n);
@@ -71,6 +84,7 @@
         root.innerHTML = `<div class="ov-card"><div class="ov-empty">${who ? `Waiting for ${esc(who)}’s next match.` : `No match at table ${esc(featureSel?.table ?? table)} yet.`}</div></div>`;
         return;
       }
+      root.classList.remove('brk-mode');
       root.classList.add('fm-mode');
       const show = showFor(featureSel, pr.round, m), shown = orderedMatch(m, show);
       root.innerHTML = featureBanner(pr.round, shown, params.get('pos') === 'bottom' ? 'bottom' : 'top', show);
@@ -159,13 +173,59 @@
     const fit = () => root.querySelector('.brk').style.setProperty('--s', Math.min(innerWidth / 1920, innerHeight / 1080));
     addEventListener('resize', fit); fit();
   }
-  function breakDraw() {
+  function brkHeader(kind) {
     brkShell();
     const v = state.view, L = state.live;
+    const box = root.querySelector('.brk');
+    box.classList.toggle('static', kind !== 'break');
+    box.classList.toggle('hold', kind === 'hold');
     root.querySelector('.brk-ev b').textContent = params.get('name') || L?.name || '';
     root.querySelector('.brk-ev small').textContent = !v ? 'Waiting for melee.gg…'
       : v.current ? `${v.current.name} in progress` : v.round ? `After ${v.round}` : 'Starting soon';
+  }
+  function breakDraw() {
+    brkHeader('break');
     if (brkIdx < 0) brkNext();
+  }
+  // One slide that stays up (program scene "slide"); redrawn with fresh data every minute
+  function slideDraw() {
+    brkHeader('slide');
+    const id = featureSel?.scene?.slide;
+    const el = root.querySelector('.brk-slide');
+    let s = null;
+    try { s = BREAK[id]?.(); } catch (e) {}
+    el.innerHTML = s ? `<div class="brk-h"><h1>${s.title}</h1>${s.sub ? `<span>${esc(s.sub)}</span>` : ''}</div><div class="brk-body brk-${id}">${s.html}</div>`
+      : `<div class="brk-empty"><b>Back in a moment</b><span>${state.view ? 'This slide has nothing to show yet.' : 'Loading the event…'}</span></div>`;
+    if (s?.after) s.after(el);
+    el.classList.add('in');
+  }
+  // Starting soon / back soon card with an optional countdown (program scene "hold")
+  let holdTimer = null;
+  function holdDraw() {
+    brkHeader('hold');
+    const sc = featureSel?.scene || {};
+    const el = root.querySelector('.brk-slide');
+    el.innerHTML = `<div class="brk-hold"><b>${esc(sc.title || 'Back soon')}</b><span class="cd"></span></div>`;
+    el.classList.add('in');
+    const cd = el.querySelector('.cd');
+    const tickCd = () => {
+      if (!sc.until) { cd.textContent = ''; return; }
+      const left = Math.round((sc.until - Date.now()) / 1000);
+      cd.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Any moment now';
+    };
+    clearInterval(holdTimer); tickCd(); holdTimer = setInterval(tickCd, 1000);
+  }
+  // Switching scenes: fade out, clear the old scene's timers, draw the new one, fade in
+  let switching = null;
+  function switchScene() {
+    clearTimeout(switching);
+    root.classList.add('ov-out');
+    switching = setTimeout(() => {
+      clearTimeout(brkTimer); brkIdx = -1; clearInterval(holdTimer);
+      root.className = 'ov-out'; root.innerHTML = '';
+      draw();
+      void root.offsetWidth; root.classList.remove('ov-out');
+    }, 350);
   }
   const brkAvailable = () => brkWanted.filter(id => { try { return !!BREAK[id](); } catch (e) { return false; } });
   function brkNext() {
@@ -298,7 +358,7 @@
   const t30colors = params.get('t30colors') !== '0';
   let colorsSentFor = null;
   async function syncTake30Colors(round, m, force = false) {
-    if (!t30 || !t30colors || m.players.length < 2) return;
+    if (!t30 || !t30colors || preview || m.players.length < 2) return;
     const key = `${round.id}|${m.table}|${m.players.map(p => p.id).join('|')}`;
     if (colorsSentFor === key) return;
     const fields = take30MatchFields(m, t30swap);
@@ -320,23 +380,33 @@
       draw();
     } catch (e) { if (!state.view) root.innerHTML = `<div class="ov-card"><div class="ov-empty">${esc(e.message)}</div></div>`; }
   }
-  // The feature match picked on the Stream tab or in Pairings (checked every few seconds)
+  // What's on stream (feature match, swap/wins, program scene): pushed live from the relay, with a slow check as a fallback
   let featureSel = null;
-  async function checkFeature() {
-    if ((type !== 'feature' && type !== 'break') || !tid) return;
-    const sel = await loadFeature(tid);
+  const usesFeature = ['feature', 'break', 'program'].includes(linkType);
+  async function applyFeature(sel) {
     if (!sel) return;
     const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, show: x?.show ?? null });
-    if (sig(sel) === sig(featureSel)) return;
+    const sceneSig = x => JSON.stringify(x?.scene ?? null);
+    const selChanged = sig(sel) !== sig(featureSel), sceneChanged = sceneSig(sel) !== sceneSig(featureSel);
+    if (!selChanged && !sceneChanged) return;
+    const first = featureSel === null;
     featureSel = sel;
-    // A choice picked while replaying an earlier round shows that round, as it was then
-    state.asOf = sel.round || null;
-    if (state.live && state.asOf) { const v = computeView(); try { await ensureStandings([v.at?.id, v.prev?.id]); } catch (e) {} }
-    if (state.view || state.live) draw();
+    if (selChanged) {
+      // A choice picked while replaying an earlier round shows that round, as it was then
+      state.asOf = sel.round || null;
+      if (state.live && state.asOf) { const v = computeView(); try { await ensureStandings([v.at?.id, v.prev?.id]); } catch (e) {} }
+    }
+    if (!(state.view || state.live)) return;
+    if (linkType === 'program' && sceneChanged && !first) switchScene();
+    else draw();
   }
+  async function checkFeature() { if (usesFeature && tid) applyFeature(await loadFeature(tid)); }
   state.liveId = tid;
-  checkFeature();
-  setInterval(checkFeature, 4000);
+  if (usesFeature && tid) {
+    checkFeature();
+    liveFeature(tid, applyFeature);
+    setInterval(checkFeature, 60000);
+  }
   tick(true);
   setInterval(() => tick(false), 60000);
 })();

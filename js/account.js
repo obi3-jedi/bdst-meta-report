@@ -121,6 +121,7 @@ function renderHub() {
   document.body.classList.toggle('on-hub-page', r.name === 'mine' || r.name === 'new' || r.name === 'invite');
   if (!acct.loaded) { el.hidden = r.name === 'home'; el.innerHTML = r.name === 'home' ? '' : '<div class="hub-card"><p class="hint">Loading…</p></div>'; return; }
   el.hidden = false;
+  if (r.name !== 'event') stopLive();
   if (r.name === 'invite') return inviteView(el, r.code);
   if (r.name === 'event') return eventView(el, r.id);
   if (!acct.user) {
@@ -249,6 +250,85 @@ function overlayUrl(type, t = openTournament()) {
   return `${base}?overlay=${type}&k=${t.overlayKey}${extra}`;
 }
 
+// ---------- Live control: one OBS link (?overlay=program), scenes switched from here ----------
+const SCENES = [
+  { group: 'Over the camera', items: [
+    { key: 'camera', label: 'Camera only', scene: { mode: 'camera' } },
+    { key: 'feature', label: 'Feature match', scene: { mode: 'feature' }, hint: 'banner, base counters and pips' },
+  ] },
+  { group: 'Full screen', items: [
+    { key: 'break', label: 'Break screen', scene: { mode: 'break' }, hint: 'cycles through the slides' },
+    { key: 'slide:upnext', label: 'Feature match card', scene: { mode: 'slide', slide: 'upnext' } },
+    { key: 'slide:standings', label: 'Standings', scene: { mode: 'slide', slide: 'standings' } },
+    { key: 'slide:decks', label: 'Most played decks', scene: { mode: 'slide', slide: 'decks' } },
+    { key: 'slide:race', label: 'Top cut race', scene: { mode: 'slide', slide: 'race' } },
+    { key: 'slide:bracket', label: 'Bracket', scene: { mode: 'slide', slide: 'bracket' } },
+    { key: 'slide:recap', label: 'Round recap', scene: { mode: 'slide', slide: 'recap' } },
+    { key: 'slide:aspects', label: 'Aspects', scene: { mode: 'slide', slide: 'aspects' } },
+  ] },
+  { group: 'Holding card', items: [
+    { key: 'hold:Starting soon', label: 'Starting soon', scene: { mode: 'hold', title: 'Starting soon' } },
+    { key: 'hold:Back soon', label: 'Back soon', scene: { mode: 'hold', title: 'Back soon' } },
+  ] },
+];
+const sceneKey = sc => !sc?.mode ? 'feature' : sc.mode === 'slide' ? 'slide:' + sc.slide : sc.mode === 'hold' ? 'hold:' + (sc.title || 'Back soon') : sc.mode;
+const sceneLabel = sc => SCENES.flatMap(g => g.items).find(i => i.key === sceneKey(sc))?.label || 'Feature match';
+
+function liveControlHtml(t) {
+  const prog = overlayUrl('program', t);
+  const showPrev = store(true, 'bdst-lc-preview') !== 'off';
+  return `<section class="ev-box live-ctl" aria-labelledby="lc-title">
+    <div class="lc-head"><h3 id="lc-title">Live control</h3><span class="lc-onair" id="lc-onair" aria-live="polite"></span>
+      <span class="lc-conn" id="lc-conn" title="Connection to the stream">Connecting…</span></div>
+    <div class="lc-main ${showPrev ? '' : 'no-prev'}">
+      ${showPrev ? `<div class="lc-prev"><div class="lc-slot" id="lc-slot"></div><span class="lc-cam" aria-hidden="true">camera</span></div>` : ''}
+      <div class="lc-groups">${SCENES.map(g => `<div class="lc-group"><h4>${g.group}</h4><div class="lc-btns">${g.items.map(i =>
+        `<button type="button" class="lc-btn" data-scene="${esc(i.key)}" aria-pressed="false">${esc(i.label)}${i.hint ? `<small>${esc(i.hint)}</small>` : ''}</button>`).join('')}
+        ${g.group === 'Holding card' ? `<label class="lc-timer">Countdown <select id="lc-mins"><option value="0">No timer</option>${[2, 5, 10, 15, 20, 30].map(n => `<option value="${n}" ${n === 10 ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>` : ''}</div></div>`).join('')}</div>
+    </div>
+    <div class="copyline"><code>${esc(prog.replace(/k=[a-f0-9]+/, 'k=••••••'))}</code><button class="btn ghost sm" type="button" data-copy="${esc(prog)}">Copy OBS link</button></div>
+    <p class="hint">Put this <b>one link</b> in OBS as a Browser Source (1920 × 1080) above your camera, then run everything from here. Anyone on the stream team can switch scenes from any browser; the stream changes within a second.
+      <button class="linkbtn" type="button" data-acct="toggle-preview">${showPrev ? 'Hide preview' : 'Show preview'}</button></p>
+  </section>`;
+}
+function fitPreview() {
+  const slot = $('lc-slot'), f = $('lc-frame'); if (!slot || !f) return;
+  f.style.transform = `scale(${slot.clientWidth / 1920})`;
+}
+addEventListener('resize', fitPreview);
+// One live connection per open tournament page: keeps the ON AIR buttons right when a teammate switches scenes
+function startLive(t) {
+  if (acct.live?.tid === t.meleeId) return;
+  stopLive();
+  const live = { tid: t.meleeId, value: null, ok: false };
+  live.stop = liveFeature(t.meleeId, v => {
+    live.value = v; live.ok = true; markScene();
+    // Keep the Stream tab's feature match controls in step with the rest of the team
+    if (String(state.liveId) === String(t.meleeId)) { state.featureSel = v; if (state.view && !document.activeElement?.closest('#feature-picker')) renderFeaturePicker(); }
+  });
+  // Connection status from the socket's own events isn't exposed; treat a recent message as connected
+  acct.live = live;
+}
+function stopLive() { if (acct.live) { acct.live.stop(); acct.live = null; } }
+function markScene() {
+  const sc = acct.live?.value?.scene || acct.pendingScene || null;
+  const key = acct.pendingScene ? sceneKey(acct.pendingScene) : sceneKey(sc);
+  document.querySelectorAll('[data-scene]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scene === key)));
+  const onair = $('lc-onair'); if (onair) onair.innerHTML = `<i></i>On air: <b>${esc(sceneLabel(acct.pendingScene || sc))}</b>`;
+  const conn = $('lc-conn'); if (conn) { conn.textContent = acct.live?.ok ? 'Live' : 'Connecting…'; conn.classList.toggle('ok', !!acct.live?.ok); }
+}
+async function pickScene(key) {
+  const t = acct.current; if (!t) return;
+  const item = SCENES.flatMap(g => g.items).find(i => i.key === key); if (!item) return;
+  const scene = { ...item.scene };
+  if (scene.mode === 'hold') { const mins = Number($('lc-mins')?.value || 0); if (mins) scene.until = Date.now() + mins * 60000; }
+  acct.pendingScene = scene; markScene();
+  try { const v = await saveScene(t.meleeId, scene); if (acct.live) acct.live.value = v; }
+  catch (e) { toast(e.message); }
+  finally { acct.pendingScene = null; markScene(); }
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-scene]'); if (b) pickScene(b.dataset.scene); });
+
 const BREAK_SLIDE_INFO = [
   ['upnext', 'Feature match', 'the match on the feature table, while a round is on'],
   ['standings', 'Standings', 'top 8 with decks'],
@@ -262,6 +342,9 @@ const breakSlidesOf = s => s.breakSlides?.length ? s.breakSlides : BREAK_SLIDE_I
 
 function drawEvent(el = $('hub')) {
   const t = acct.current; if (!t || !t.role) return;
+  // Keep the live preview running across redraws (rebuilding it would reload the whole overlay)
+  const keepFrame = el.querySelector('#lc-frame');
+  if (keepFrame) keepFrame.remove();
   const owner = t.role === 'owner';
   const s = t.settings || {};
   const feature = overlayUrl('feature', t);
@@ -274,6 +357,8 @@ function drawEvent(el = $('hub')) {
       <span class="t-role ${t.role}">${owner ? 'You own this' : 'Stream team'}</span></div>
     <div class="ev-go"><button class="btn" type="button" data-acct="controls">Open stream controls</button>
       <span class="hint">Pick the feature match, swap sides, set games won and run Take 30 from the <b>Stream</b> tab below.</span></div>
+
+    ${liveControlHtml(t)}
 
     <div class="ev-grid">
       <section class="ev-box">
@@ -327,6 +412,17 @@ function drawEvent(el = $('hub')) {
         <p class="danger"><button class="linkbtn" type="button" data-acct="delete">Delete tournament</button></p>
       </section>` : ''}
     </div></div>`;
+
+  // Live control: put the preview back (or start it), and listen for scene changes from the rest of the team
+  const slot = $('lc-slot');
+  if (slot && store(true, 'bdst-lc-preview') !== 'off') {
+    const src = overlayUrl('program', t) + '&preview=1';
+    if (keepFrame && keepFrame.dataset.src === src) slot.appendChild(keepFrame);
+    else slot.innerHTML = `<iframe id="lc-frame" data-src="${esc(src)}" src="${esc(src)}" title="Live preview" tabindex="-1"></iframe>`;
+    fitPreview();
+  }
+  startLive(t);
+  markScene();
 
   // Overlay look: saved for the team as soon as it changes
   $('ev-mat')?.addEventListener('change', e => saveSettings({ mat: Math.max(600, Math.min(1500, Number(e.target.value) || 1080)) }));
@@ -455,6 +551,7 @@ document.addEventListener('click', async e => {
   if (what === 'signout') return signOut();
   if (what === 'menu') { const pop = document.querySelector('.acct-pop'); pop.hidden = !pop.hidden; a.setAttribute('aria-expanded', String(!pop.hidden)); return; }
   if (what === 'mine' || what === 'new') { document.querySelector('.acct-pop').hidden = true; go({ view: what }); return; }
+  if (what === 'toggle-preview') { store(false, 'bdst-lc-preview', store(true, 'bdst-lc-preview') === 'off' ? '' : 'off'); const f = $('lc-frame'); if (f) f.remove(); drawEvent(); return; }
   if (what === 'controls') { selectTab('stream'); $('tabs').scrollIntoView({ behavior: 'smooth' }); return; }
   if (what === 'invite') {
     try {

@@ -467,6 +467,7 @@ function renderStream() {
     { type: 'feature', title: 'Feature match', desc: 'A banner across the top of the screen for the match at table 1: players, decks, game-win pips and base counters, thin in the middle so the board stays clear. Change table=1 for another table, add &pos=bottom to put it at the bottom. Fits around a square play mat filling the camera’s height; if your mat is smaller on screen, add &mat= with its height in pixels (e.g. &mat=950). Browser Source size 1920 × 1080.', extra: '&table=1' },
     { type: 'bracket', title: 'Top 8 bracket', desc: 'The live bracket. Suggested size 1280 × 720.', extra: '' },
     { type: 'decks', title: 'Deck breakdown', desc: 'The most played decks with share. Suggested size 520 × 720.', extra: '&n=8' },
+    { type: 'program', title: 'Program: one link for everything', desc: 'A single full 1920 × 1080 Browser Source above your camera. Switch it between camera only, feature match, break screen, single slides and starting/back soon cards from Live control on the tournament page.', extra: '' },
     { type: 'break', title: 'Break screen', desc: 'A full-screen break screen that cycles through the feature match, standings, decks, top cut race, bracket, round recap and aspects. Add &sec=20 to change the seconds per slide, or &slides=standings,decks to pick slides. Browser Source size 1920 × 1080.', extra: '' },
   ];
   const t30 = take30Url(store(true, 'bdst-t30'));

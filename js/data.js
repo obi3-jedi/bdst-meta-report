@@ -542,3 +542,23 @@ function gameWinsOf(p, show) { const n = show?.wins?.[p.id]; return n != null ? 
 async function saveShow(tid, patch) {
   return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify(patch) });
 }
+
+// What's on stream, pushed live from the relay over a WebSocket (reconnects by itself). Returns a stop function.
+function liveFeature(tid, onValue) {
+  let ws = null, stopped = false, wait = 1000, ping = null;
+  const url = RELAY.replace(/^http/, 'ws') + '/feature/' + tid + '/live';
+  const again = () => { if (!stopped) setTimeout(open, wait = Math.min(wait * 2, 30000)); };
+  function open() {
+    if (stopped) return;
+    try { ws = new WebSocket(url); } catch (e) { again(); return; }
+    ws.onopen = () => { wait = 1000; clearInterval(ping); ping = setInterval(() => { try { ws.send('ping'); } catch (e) {} }, 30000); };
+    ws.onmessage = e => { if (e.data === 'pong') return; try { onValue(JSON.parse(e.data)); } catch (err) {} };
+    ws.onclose = () => { clearInterval(ping); again(); };
+  }
+  open();
+  return () => { stopped = true; clearInterval(ping); try { ws.close(); } catch (e) {} };
+}
+// Switch the program link's scene: { mode: camera|feature|break|slide|hold, slide?, title?, until? }
+async function saveScene(tid, scene) {
+  return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ scene }) });
+}
