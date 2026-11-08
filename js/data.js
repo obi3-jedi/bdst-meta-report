@@ -60,7 +60,7 @@ async function ensureStandings(roundIds) {
 function withDecks(livePlayers) {
   const idx = deckIndex();
   return (livePlayers || []).map(lp => {
-    const d = idx && (idx.byId.get(String(lp.playerId)) || idx.byName.get(String(lp.name).toLowerCase()) || idx.byName.get(String(lp.username || '').toLowerCase()));
+    const d = pickFor(lp.playerId) || (idx && (idx.byId.get(String(lp.playerId)) || idx.byName.get(String(lp.name).toLowerCase()) || idx.byName.get(String(lp.username || '').toLowerCase())));
     return {
       rank: lp.rank, id: String(lp.playerId), name: lp.name, username: lp.username || '', record: lp.record, points: lp.points, status: lp.status,
       leader: d ? d.leader : 'Unknown', base: d ? d.base : 'Unknown', known: !!(d && d.known), matched: !!d, deckId: d?.deckId || '',
@@ -580,4 +580,8 @@ function roundClock(sel = state.featureSel) {
   const roundTimer = /round ends/i.test(t.label || '') || (!/start|registration/i.test(t.label || '') && !!v?.current);
   if (!roundTimer || t.endsAt < Date.now() - 15 * 60000) return null;
   return { endsAt: t.endsAt, source: 'melee' };
+}
+// Pick a leader and base for a player by hand (Limited): { player, name, leader, base } or { player, clear: true }
+async function savePick(tid, pick) {
+  return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ pick }) });
 }

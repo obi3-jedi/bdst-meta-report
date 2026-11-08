@@ -642,6 +642,8 @@ const onStream = (round, x) => {
 };
 function renderFeaturePicker() {
   const el = $('feature-picker'); if (!el || !state.view) return;
+  // Don't redraw under someone typing a leader or base
+  if (document.activeElement?.closest?.('#feature-picker .dk-row')) return;
   const v = state.view;
   // Choosing while replaying an earlier round picks from that round (and pins the overlay to it)
   const roundId = v.replay ? v.at?.id : streamRoundId();
@@ -656,7 +658,15 @@ function renderFeaturePicker() {
     : cur ? `Table <b>${cur.table}</b>: ${esc(cur.players[0].name)} vs ${esc(cur.players[1].name)}` : `Table ${sel.table ?? 1} (no match there this round)`;
   const players = currentPlayers().filter(p => !isDropped(p)).sort((a, b) => a.name.localeCompare(b.name));
   const pinned = state.featureSel?.round ? state.live.rounds.find(r => r.id === state.featureSel.round) : null;
-  el.innerHTML = `<p class="fp-now">On stream now: ${now}${pr ? ` <span class="hint">(${esc(pr.round.name)}${pinned ? ', replay' : ''})</span>` : ''}</p>
+  // Two tabs: Match (what's on stream) and Decks (pick leaders and bases by hand, for Limited)
+  const limited = openTournament()?.settings?.format === 'limited';
+  if (!state.fpTab) state.fpTab = limited ? 'decks' : 'match';
+  const missing = cur ? cur.players.filter(p => !deckOf(p)).length : 0;
+  const tabs = `<div class="fp-tabs" role="tablist" aria-label="Feature match">
+    <button type="button" role="tab" data-fptab="match" aria-selected="${state.fpTab === 'match'}">Match</button>
+    <button type="button" role="tab" data-fptab="decks" aria-selected="${state.fpTab === 'decks'}">Decks${limited ? ' (Limited)' : ''}${missing ? ` <span class="fp-badge" title="Players in the feature match without a deck">${missing}</span>` : ''}</button></div>`;
+  if (state.fpTab === 'decks') { el.innerHTML = tabs + decksTab(cur, pr, ok, limited); return; }
+  el.innerHTML = tabs + `<p class="fp-now">On stream now: ${now}${pr ? ` <span class="hint">(${esc(pr.round.name)}${pinned ? ', replay' : ''})</span>` : ''}</p>
     ${v.replay ? `<p class="hint">You’re viewing ${esc(v.round)}. A match picked now shows on stream as it was in ${esc(v.round)}.</p>` : pinned ? `<p class="hint">The overlay is pinned to ${esc(pinned.name)} from a replay. Pick a match again to follow the live round.</p>` : ''}
     ${ok ? `<div class="row2">
       <label class="selectl">Table <select id="fp-table"><option value="">Choose a match…</option>${rows.map(x => `<option value="${x.table}" ${!sel.player && String(sel.table ?? 1) === String(x.table) ? 'selected' : ''}>Table ${x.table}: ${esc(x.players[0].name)} vs ${esc(x.players[1].name)}</option>`).join('')}</select></label>
@@ -667,6 +677,67 @@ function renderFeaturePicker() {
   $('fp-table')?.addEventListener('change', e => { if (e.target.value) setFeature({ table: Number(e.target.value) }); });
   $('fp-player')?.addEventListener('change', e => { if (e.target.value) setFeature({ player: e.target.value }); });
 }
+// ---------- Decks tab: leaders and bases picked by hand (Limited, or anyone without a decklist) ----------
+const cardNames = kind => Object.values(window.SWU_CARDS?.[kind] || {}).map(c => c.n).sort((a, b) => a.localeCompare(b));
+function ensureDatalists() {
+  if ($('dl-leaders')) return;
+  const mk = (id, names) => { const d = document.createElement('datalist'); d.id = id; d.innerHTML = names.map(n => `<option value="${esc(n)}"></option>`).join(''); document.body.appendChild(d); };
+  mk('dl-leaders', cardNames('leaders')); mk('dl-bases', cardNames('bases'));
+}
+// The card's proper name for whatever was typed (any case), or null if it isn't a leader/base we know
+const exactCard = (kind, text) => { const t = String(text || '').trim().toLowerCase(); return t ? cardNames(kind).find(n => n.toLowerCase() === t) || null : null; };
+function deckRow(p) {
+  const pick = state.featureSel?.picks?.[p.id], d = deckOf(p);
+  const status = pick ? 'Picked by hand' : d ? 'From the decklist' : 'No deck yet';
+  return `<div class="dk-row" data-pid="${esc(p.id)}" data-name="${esc(p.name)}">
+    <div class="dk-who">${d ? leaderImg(d.leader) : '<span class="thumb" aria-hidden="true">?</span>'}<div><b>${esc(p.name)}</b><small class="${d ? '' : 'warn'}">${status}${d && !pick ? ' · picking replaces it' : ''}</small></div></div>
+    <label class="fld"><span>Leader</span><input list="dl-leaders" data-dk="leader" value="${esc(pick?.leader || d?.leader || '')}" placeholder="Type a leader…" autocomplete="off"></label>
+    <label class="fld"><span>Base</span><input list="dl-bases" data-dk="base" value="${esc(pick?.base || d?.rawBase || '')}" placeholder="Type a base…" autocomplete="off"></label>
+    <div class="dk-btns"><button class="btn sm" type="button" data-dk-save>Save</button>${pick ? '<button class="linkbtn" type="button" data-dk-clear>Clear</button>' : ''}</div>
+  </div>`;
+}
+function decksTab(cur, pr, ok, limited) {
+  if (!ok) return '<p class="hint">Sign in and open this event from <b>My tournaments</b> to pick leaders and bases.</p>';
+  ensureDatalists();
+  const show = cur && pr ? showFor(state.featureSel, pr.round, cur) : null;
+  const inMatch = cur ? orderedMatch(cur, show).players : [];
+  const picks = Object.entries(state.featureSel?.picks || {});
+  const players = currentPlayers().filter(p => !isDropped(p)).sort((a, b) => a.name.localeCompare(b.name));
+  const other = state.fpOther && !inMatch.some(p => p.id === state.fpOther) ? players.find(p => p.id === state.fpOther) : null;
+  return `<p class="hint">${limited ? '<b>Limited:</b> there are no decklists, so pick' : 'Pick'} each player’s leader and base here. Picks are saved for the whole event and used everywhere: the feature match, break screen and deck breakdown. A pick replaces that player’s decklist.</p>
+    ${inMatch.length ? `<h4 class="ev-sub">On the feature table${pr ? ` · ${esc(pr.round.name)}` : ''}</h4>${inMatch.map(deckRow).join('')}` : '<p class="hint">No feature match yet. Pick one on the Match tab, or choose a player below.</p>'}
+    <h4 class="ev-sub">Another player</h4>
+    <label class="selectl"><select id="dk-other"><option value="">Choose a player…</option>${players.map(p => `<option value="${esc(p.id)}" ${other?.id === p.id ? 'selected' : ''}>${esc(p.name)}${deckOf(p) ? '' : ' (no deck)'}</option>`).join('')}</select></label>
+    ${other ? deckRow(other) : ''}
+    ${picks.length ? `<details class="dk-list"><summary>${picks.length} ${picks.length === 1 ? 'player has' : 'players have'} a picked deck</summary><ul>${picks.sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([id, pk]) =>
+      `<li><button class="linkbtn" type="button" data-dk-edit="${esc(id)}">${esc(pk.name || 'Player ' + id)}</button> · ${esc(splitLeader(pk.leader).name)} · ${esc(pk.base)}</li>`).join('')}</ul></details>` : ''}`;
+}
+async function saveDeckRow(row, clear) {
+  const pid = row.dataset.pid, name = row.dataset.name;
+  let pick;
+  if (clear) pick = { player: pid, clear: true };
+  else {
+    const leader = exactCard('leaders', row.querySelector('[data-dk="leader"]').value), base = exactCard('bases', row.querySelector('[data-dk="base"]').value);
+    if (!leader) { toast('Pick a leader from the list (start typing its name).'); row.querySelector('[data-dk="leader"]').focus(); return; }
+    if (!base) { toast('Pick a base from the list (start typing its name).'); row.querySelector('[data-dk="base"]').focus(); return; }
+    pick = { player: pid, name, leader, base };
+  }
+  try {
+    state.featureSel = await savePick(state.live.id, pick);
+    toast(clear ? `Cleared ${name}’s picked deck.` : `Saved: ${name} on ${splitLeader(pick.leader).name}, ${pick.base}.`);
+    document.activeElement?.blur();
+    render();
+  } catch (e) { toast(e.message); }
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-fptab]'); if (t) { state.fpTab = t.dataset.fptab; renderFeaturePicker(); return; }
+  const sv = e.target.closest('[data-dk-save]'); if (sv) { saveDeckRow(sv.closest('.dk-row')); return; }
+  const cl = e.target.closest('[data-dk-clear]'); if (cl) { saveDeckRow(cl.closest('.dk-row'), true); return; }
+  const ed = e.target.closest('[data-dk-edit]'); if (ed) { state.fpOther = ed.dataset.dkEdit; renderFeaturePicker(); }
+});
+document.addEventListener('change', e => { if (e.target.id === 'dk-other') { state.fpOther = e.target.value || null; renderFeaturePicker(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest?.('.dk-row input')) { e.preventDefault(); saveDeckRow(e.target.closest('.dk-row')); } });
+
 // Swap sides and game wins for the match on stream (left as it appears on screen)
 function showControls(round, m) {
   const show = showFor(state.featureSel, round, m), shown = orderedMatch(m, show);
@@ -854,7 +925,7 @@ async function setAsOf(roundId) {
 
 function follow(tid) {
   tid = String(tid);
-  if (state.liveId !== tid) { state.live = null; state.view = null; state.asOf = null; state.decks = null; state.pairRound = null; state.feature = null; }
+  if (state.liveId !== tid) { state.live = null; state.view = null; state.asOf = null; state.decks = null; state.pairRound = null; state.feature = null; state.featureSel = null; state.fpTab = null; }
   state.liveId = tid;
   store(false, 'bdst-live', tid);
   $('melee-url').value = `https://melee.gg/Tournament/View/${tid}`;

@@ -202,15 +202,20 @@ function deckGroups(known, by = state.groupBy) {
 }
 
 // The deck a player is on, labelled like the deck breakdown ("Yoda Red Force"). Always by leader + base.
+// A leader and base picked by hand for a player (Limited, or no decklist); shared with the team through the relay
+function pickFor(id) {
+  const p = state.live && state.featureSel?.picks?.[String(id)];
+  return p ? { id: String(id), name: p.name, leader: p.leader, base: p.base, known: true, picked: true } : null;
+}
 function deckOf(e) {
   if (!e) return null;
   let d = null;
   const idx = deckIndex();
-  if (idx) d = idx.byId.get(String(e.id)) || idx.byName.get(String(e.name).toLowerCase());
-  else if (!state.live) d = finalRound().find(p => p.id === String(e.id));
+  if (state.live) d = pickFor(e.id) || (idx ? idx.byId.get(String(e.id)) || idx.byName.get(String(e.name).toLowerCase()) : null);
+  else d = finalRound().find(p => p.id === String(e.id));
   if (!d || !d.known) return null;
   const base = baseKey(d);
-  return { leader: d.leader, base, rawBase: d.base, label: deckName(splitLeader(d.leader).name, base), deckId: d.deckId || '' };
+  return { leader: d.leader, base, rawBase: d.base, label: deckName(splitLeader(d.leader).name, base), deckId: d.deckId || '', picked: !!d.picked };
 }
 const entrantDeck = deckOf;
 

@@ -459,12 +459,13 @@
   const usesFeature = ['feature', 'break', 'program'].includes(linkType);
   async function applyFeature(sel) {
     if (!sel) return;
-    const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, asOf: x?.asOf ?? null, show: x?.show ?? null, clock: x?.clock ?? null });
+    const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, asOf: x?.asOf ?? null, show: x?.show ?? null, clock: x?.clock ?? null, picks: x?.picks ?? null });
     const sceneSig = x => JSON.stringify(x?.scene ?? null);
     const selChanged = sig(sel) !== sig(featureSel), sceneChanged = sceneSig(sel) !== sceneSig(featureSel);
     if (!selChanged && !sceneChanged) return;
     const first = featureSel === null;
     featureSel = sel;
+    state.featureSel = sel;   // hand-picked decks (Limited) are read from here
     if (selChanged) {
       // Replaying an earlier round (from Live control), or a match picked while replaying: show it as it was then
       state.asOf = sel.asOf || sel.round || null;

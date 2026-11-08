@@ -23,7 +23,8 @@
 //   PUT /feature/:tid        (organiser) { table } or { player }, optionally { round } to pin a past round;
 //                            or { match, swap, wins } to swap sides / set game wins for the match on stream;
 //                            or { scene: { mode: camera|feature|break|slide|hold, slide?, title?, until? } } for the program link;
-//                            or { asOf: <roundId> | null } to show everything as it was after an earlier round
+//                            or { asOf: <roundId> | null } to show everything as it was after an earlier round;
+//                            or { pick: { player, name, leader, base } | { player, clear: true } } for hand-picked decks (Limited)
 //                            (or {} to go back to the overlay link's table)
 //
 // The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
@@ -336,6 +337,21 @@ async function feature(request, env, tid, origin) {
       const { round, asOf, ...rest } = cur;
       return save(body.asOf === null ? rest : { ...rest, asOf: Number(body.asOf) });
     }
+    // Leaders and bases picked by hand (Limited, or a player without a decklist), kept for the whole event:
+    // { pick: { player, name, leader, base } } saves one, { pick: { player, clear: true } } removes it
+    if (body.pick && body.table == null && body.player == null && body.match == null && !body.scene) {
+      const pk = body.pick, pid = String(pk.player ?? '');
+      if (!/^\d{1,12}$/.test(pid)) return json({ error: 'That player is not valid.' }, 400, origin, 0);
+      const picks = { ...(cur.picks || {}) };
+      if (pk.clear) delete picks[pid];
+      else {
+        const leader = String(pk.leader || '').trim().slice(0, 100), base = String(pk.base || '').trim().slice(0, 100);
+        if (!leader || !base) return json({ error: 'Choose both a leader and a base.' }, 400, origin, 0);
+        picks[pid] = { name: String(pk.name || '').slice(0, 60), leader, base };
+      }
+      if (Object.keys(picks).length > 1500) return json({ error: 'That’s too many picks for one event.' }, 400, origin, 0);
+      return save({ ...cur, picks });
+    }
     // Round clock on the feature match: { clock: { mins } } starts it, { clock: { add: ±mins } } adjusts it, { clock: null } clears it
     if ('clock' in body && body.table == null && body.player == null && body.match == null && !body.scene) {
       const { clock, ...rest } = cur;
@@ -364,7 +380,8 @@ async function feature(request, env, tid, origin) {
       return save({ ...cur, show });
     }
     // A new feature match choice (the scene carries over)
-    const value = { ...(cur.scene ? { scene: cur.scene } : {}), ...(cur.asOf ? { asOf: cur.asOf } : {}), ...(cur.clock ? { clock: cur.clock } : {}) };
+    const value = {};
+    for (const k of ['scene', 'asOf', 'clock', 'picks']) if (cur[k]) value[k] = cur[k];
     if (body.table != null && /^\d{1,4}$/.test(String(body.table))) value.table = Number(body.table);
     else if (body.player != null && /^\d{1,12}$/.test(String(body.player))) value.player = String(body.player);
     // A choice made while replaying an earlier round pins the overlay to that round

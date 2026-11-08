@@ -833,3 +833,20 @@ body.on-hub-page header { align-items: center; }
 .fs-col.left .fs-logo-row { border-top-color: rgba(255, 255, 255, .12); }
 .fs-plate .fs-clock { padding-left: 0; border-left: 0; font-size: calc(32 * var(--u)); }
 .fs-clock.idle { opacity: .6; }
+
+/* Feature match box: Match / Decks tabs and hand-picked decks */
+.fp-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+.fp-tabs button { padding: 8px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: 700 14px var(--f-body); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.fp-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--red); }
+.fp-badge { min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--red); color: #fff; font: 700 11px/18px var(--f-body); text-align: center; }
+.dk-row { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.3fr) minmax(160px, 1.1fr) auto; gap: 10px 12px; align-items: end; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.dk-who { display: flex; gap: 10px; align-items: center; min-width: 0; align-self: center; }
+.dk-who > div { display: grid; min-width: 0; }
+.dk-who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-who small { color: var(--muted); font-size: 12px; }
+.dk-who small.warn { color: #e6b93a; }
+.dk-btns { display: flex; gap: 8px; align-items: center; padding-bottom: 2px; }
+.dk-list { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.dk-list summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+.dk-list ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+@media (max-width: 760px) { .dk-row { grid-template-columns: 1fr; } }
