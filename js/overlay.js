@@ -196,7 +196,20 @@
     box.classList.toggle('has-wall', kind === 'hold' && !!params.get('logo_wallpaper'));
     root.querySelector('.brk-ev b').textContent = params.get('name') || L?.name || '';
     root.querySelector('.brk-ev small').textContent = !v ? 'Waiting for melee.gg…'
+      : kind === 'hold' ? upNext()
       : v.current ? `${v.current.name} in progress` : v.round ? `After ${v.round}` : 'Starting soon';
+  }
+  // On the starting/back soon cards: the round about to be played ("Round 4 coming up")
+  function upNext() {
+    const L = state.live, v = state.view;
+    if (!L?.rounds?.length) return 'Round 1 coming up';
+    const atIdx = v?.at ? L.rounds.findIndex(r => r.id === v.at.id) : -1;
+    // The first round after the one being shown that isn't finished (pairings posted, or already listed by melee)
+    const next = L.rounds.find((r, i) => i > atIdx && !r.completed);
+    if (next) return `${next.name} coming up`;
+    // melee only lists a round once it's created, so guess the next Swiss round's number
+    const m = String(v?.at?.name || '').match(/^round\s*(\d+)$/i);
+    return m ? `Round ${Number(m[1]) + 1} coming up` : 'Next round coming up';
   }
   function breakDraw() {
     brkHeader('break');
