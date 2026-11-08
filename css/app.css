@@ -876,3 +876,8 @@ body.on-hub-page header { align-items: center; }
 /* Bigger logos on the starting/back soon cards */
 .brk-hold-logos { gap: 120px; margin-top: 50px; }
 .brk-hold-logo { height: 240px; max-width: 680px; }
+/* Holding cards: logos pinned to the bottom corners */
+.brk-hold { position: relative; }
+.brk-hold-logo { position: absolute; bottom: 0; height: 200px; max-width: 560px; object-fit: contain; }
+.brk-hold-logo.left { left: 0; object-position: left bottom; }
+.brk-hold-logo.right { right: 0; object-position: right bottom; }

@@ -220,8 +220,9 @@
     brkHeader('hold');
     const sc = featureSel?.scene || {};
     const el = root.querySelector('.brk-slide');
-    const logos = logoImg('store', 'brk-hold-logo') + logoImg('creator', 'brk-hold-logo');
-    el.innerHTML = `<div class="brk-hold"><b>${esc(sc.title || 'Back soon')}</b><span class="cd"></span>${logos ? `<div class="brk-hold-logos">${logos}</div>` : ''}</div>`;
+    // Store logo in the bottom-left corner, content creator logo in the bottom-right
+    const store = logoImg('store', 'brk-hold-logo left'), creator = logoImg('creator', 'brk-hold-logo right');
+    el.innerHTML = `<div class="brk-hold"><b>${esc(sc.title || 'Back soon')}</b><span class="cd"></span>${store}${creator}</div>`;
     el.classList.add('in');
     const cd = el.querySelector('.cd');
     const tickCd = () => {
