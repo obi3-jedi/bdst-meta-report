@@ -884,3 +884,4 @@ body.on-hub-page header { align-items: center; }
 /* Holding cards: larger corner logos. They use the (hidden) footer strip too, and the title/countdown move up a little to make room */
 .brk.hold .brk-hold { padding-bottom: 130px; box-sizing: border-box; }
 .brk-hold-logo { height: 290px; max-width: 640px; bottom: -56px; }
+.brk-hold .cd.done { font: italic 800 84px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; }

@@ -206,7 +206,7 @@
     const atIdx = v?.at ? L.rounds.findIndex(r => r.id === v.at.id) : -1;
     // The first round after the one being shown that isn't finished (pairings posted, or already listed by melee)
     const next = L.rounds.find((r, i) => i > atIdx && !r.completed);
-    if (next) return `${next.name} coming up`;
+    if (next) return next.started && !v?.replay ? `${next.name} in progress` : `${next.name} coming up`;
     // melee only lists a round once it's created, so guess the next Swiss round's number
     const m = String(v?.at?.name || '').match(/^round\s*(\d+)$/i);
     return m ? `Round ${Number(m[1]) + 1} coming up` : 'Next round coming up';
@@ -239,6 +239,17 @@
     el.classList.add('in');
     const cd = el.querySelector('.cd');
     const tickCd = () => {
+      cd.classList.remove('done');
+      // Following the round clock (melee's timer, or the one started in Live control)
+      if (sc.clock) {
+        const c = roundClock(featureSel), v = state.view;
+        const round = v?.current?.name || v?.at?.name || 'The round';
+        const left = c ? Math.round((c.endsAt - Date.now()) / 1000) : null;
+        if (left != null && left > 0) { cd.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; return; }
+        // Time is up, or melee shows the round's results are all in
+        if (left != null || (!v?.current && v?.at)) { cd.textContent = `${round} finished`; cd.classList.add('done'); return; }
+        cd.textContent = ''; return;
+      }
       if (!sc.until) { cd.textContent = ''; return; }
       const left = Math.round((sc.until - Date.now()) / 1000);
       cd.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Any moment now';

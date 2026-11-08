@@ -309,7 +309,7 @@ function liveControlHtml(t) {
       ${showPrev ? `<div class="lc-prev"><div class="lc-slot" id="lc-slot"></div><span class="lc-cam" aria-hidden="true">camera</span></div>` : ''}
       <div class="lc-groups">${SCENES.map(g => `<div class="lc-group"><h4>${g.group}</h4><div class="lc-btns">${g.items.map(i =>
         `<button type="button" class="lc-btn" data-scene="${esc(i.key)}" aria-pressed="false">${esc(i.label)}${i.hint ? `<small>${esc(i.hint)}</small>` : ''}</button>`).join('')}
-        ${g.group === 'Holding card' ? `<label class="lc-timer">Countdown <select id="lc-mins"><option value="0">No timer</option>${[2, 5, 10, 15, 20, 30].map(n => `<option value="${n}" ${n === 10 ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>` : ''}</div></div>`).join('')}
+        ${g.group === 'Holding card' ? `<label class="lc-timer">Countdown <select id="lc-mins"><option value="clock" selected>Round clock (melee)</option><option value="0">No timer</option>${[2, 5, 10, 15, 20, 30].map(n => `<option value="${n}">${n} min</option>`).join('')}</select></label>` : ''}</div></div>`).join('')}
         <div class="lc-group"><h4>Round clock <span class="lc-clock" id="lc-clock"></span></h4><div class="lc-btns">
           <label class="lc-timer">Round length <select id="lc-clock-mins" aria-label="Round length">${[30, 40, 45, 50, 55, 60, 75, 90].map(n => `<option value="${n}" ${n === (t.settings?.roundMins || 50) ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>
           <button type="button" class="lc-btn sm" data-clock="start">Start</button>
@@ -420,7 +420,11 @@ async function pickScene(key) {
   const t = acct.current; if (!t) return;
   const item = SCENES.flatMap(g => g.items).find(i => i.key === key); if (!item) return;
   const scene = { ...item.scene };
-  if (scene.mode === 'hold') { const mins = Number($('lc-mins')?.value || 0); if (mins) scene.until = Date.now() + mins * 60000; }
+  if (scene.mode === 'hold') {
+    const v = $('lc-mins')?.value || 'clock';
+    if (v === 'clock') scene.clock = true;
+    else if (Number(v)) scene.until = Date.now() + Number(v) * 60000;
+  }
   acct.pendingScene = scene; markScene();
   try { const v = await saveScene(t.meleeId, scene); if (acct.live) acct.live.value = v; }
   catch (e) { toast(e.message); }

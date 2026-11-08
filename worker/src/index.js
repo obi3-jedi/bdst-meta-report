@@ -319,6 +319,7 @@ function cleanScene(sc) {
     out.title = String(sc.title || 'Back soon').slice(0, 40);
     const until = Number(sc.until);
     if (until && until > Date.now() && until < Date.now() + 6 * 3600_000) out.until = until;
+    else if (sc.clock === true) out.clock = true;   // count down whatever is left on the round clock
   }
   return out;
 }
