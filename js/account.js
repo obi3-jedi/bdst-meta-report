@@ -523,7 +523,7 @@ function drawEvent(el = $('hub')) {
             ${url ? `<button class="linkbtn" type="button" data-logo-remove="${slot}">Remove</button>` : ''}</div></div></div>`; }).join('')}</div>
         <h4 class="ev-sub">Wallpaper</h4>
         <div class="logo-slot wall-slot"><div class="logo-prev wall-prev" style="--dim:${(s.wallDim ?? 55) / 100}">${logoUrl(t, 'wallpaper') ? `<img src="${esc(logoUrl(t, 'wallpaper'))}" alt="Wallpaper">` : '<span>No wallpaper (plain dark background)</span>'}<i class="wall-dim" aria-hidden="true"></i></div>
-          <div class="logo-info"><b>Background</b><small>Behind the break screen, single slides and the starting/back soon cards. 1920 × 1080 works best.</small>
+          <div class="logo-info"><b>Background</b><small>Behind the Starting soon and Back soon cards. 1920 × 1080 works best.</small>
             <div class="logo-btns"><label class="btn ghost sm logo-up">${logoUrl(t, 'wallpaper') ? 'Replace' : 'Upload'}<input type="file" accept="image/png,image/jpeg,image/webp" data-logo="wallpaper" hidden></label>
             ${logoUrl(t, 'wallpaper') ? '<button class="linkbtn" type="button" data-logo-remove="wallpaper">Remove</button>' : ''}</div>
             ${logoUrl(t, 'wallpaper') ? `<label class="fld wall-dim-fld"><span>Darken so text stays readable: <output id="ev-dim-out">${s.wallDim ?? 55}%</output></span><input id="ev-dim" type="range" min="0" max="90" step="5" value="${s.wallDim ?? 55}"></label>` : ''}</div></div>`,

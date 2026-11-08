@@ -177,11 +177,10 @@
       <div class="brk-top"><img src="bdst-logo.png" alt="BDST"><div class="brk-ev"><b></b><small></small></div><div class="brk-back">We’ll be right back</div></div>
       <div class="brk-stage"><div class="brk-slide"></div></div>
       <div class="brk-foot"><div class="brk-dots"></div><div class="brk-bar"><i></i></div><div class="brk-logos">${logoImg('store', 'brk-logo')}${logoImg('creator', 'brk-logo')}</div></div></div>`;
-    // The team's wallpaper behind the full-screen scenes, darkened so the text stays readable
+    // The team's wallpaper (only shown behind the starting/back soon cards), darkened so the text stays readable
     const wall = params.get('logo_wallpaper');
     if (wall) {
       const box = root.querySelector('.brk');
-      box.classList.add('has-wall');
       box.style.setProperty('--wall', `url("${wall.replace(/"/g, '%22')}")`);
       box.style.setProperty('--dim', Math.max(0, Math.min(90, Number(params.get('walldim') ?? 55))) / 100);
     }
@@ -194,6 +193,7 @@
     const box = root.querySelector('.brk');
     box.classList.toggle('static', kind !== 'break');
     box.classList.toggle('hold', kind === 'hold');
+    box.classList.toggle('has-wall', kind === 'hold' && !!params.get('logo_wallpaper'));
     root.querySelector('.brk-ev b').textContent = params.get('name') || L?.name || '';
     root.querySelector('.brk-ev small').textContent = !v ? 'Waiting for melee.gg…'
       : v.current ? `${v.current.name} in progress` : v.round ? `After ${v.round}` : 'Starting soon';
