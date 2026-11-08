@@ -862,3 +862,14 @@ body.on-hub-page header { align-items: center; }
 /* Live data only through a tournament: no free "follow any event" box, no passcode unlock */
 #melee-url, #follow, #unfollow, #recent { display: none !important; }
 #organiser .org-row:first-of-type, #organiser .org-body > p:first-child { display: none; }
+
+/* Wallpaper behind the full-screen scenes */
+.brk.has-wall { background: linear-gradient(rgba(10, 10, 11, var(--dim, .55)), rgba(10, 10, 11, var(--dim, .55))), var(--wall) center / cover no-repeat, #0a0a0b; }
+.brk.has-wall::before { opacity: .5; }
+.wall-slot { align-items: flex-start; flex-wrap: wrap; }
+.wall-prev { position: relative; width: 240px; height: 135px; padding: 0; overflow: hidden; }
+.wall-prev img { width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; }
+.wall-prev .wall-dim { position: absolute; inset: 0; background: rgba(10, 10, 11, var(--dim, .55)); pointer-events: none; }
+.wall-prev span { position: relative; z-index: 1; text-align: center; padding: 8px; }
+.wall-dim-fld { margin-top: 8px; max-width: 280px; }
+.wall-dim-fld input { padding: 0; accent-color: var(--red); }

@@ -37,7 +37,8 @@
     if (st.layout === 'banner' && !params.get('layout')) params.set('layout', 'banner');
     if (st.cams && !params.get('cams')) params.set('cams', '1');
     if (st.roundMins) params.set('roundmins', st.roundMins);
-    for (const slot of ['store', 'creator']) if (st.logos?.[slot]) params.set('logo_' + slot, `${RELAY}/logo/${info.id}/${slot}?v=${st.logos[slot]}`);
+    for (const slot of ['store', 'creator', 'wallpaper']) if (st.logos?.[slot]) params.set('logo_' + slot, `${RELAY}/logo/${info.id}/${slot}?v=${st.logos[slot]}`);
+    params.set('walldim', st.wallDim ?? 55);
     const sig = JSON.stringify([info.meleeId, st]);
     setInterval(async () => {
       try { const now = await relay('/overlay/' + encodeURIComponent(key)); if (JSON.stringify([now.meleeId, now.settings || {}]) !== sig) location.reload(); }
@@ -176,6 +177,14 @@
       <div class="brk-top"><img src="bdst-logo.png" alt="BDST"><div class="brk-ev"><b></b><small></small></div><div class="brk-back">We’ll be right back</div></div>
       <div class="brk-stage"><div class="brk-slide"></div></div>
       <div class="brk-foot"><div class="brk-dots"></div><div class="brk-bar"><i></i></div><div class="brk-logos">${logoImg('store', 'brk-logo')}${logoImg('creator', 'brk-logo')}</div></div></div>`;
+    // The team's wallpaper behind the full-screen scenes, darkened so the text stays readable
+    const wall = params.get('logo_wallpaper');
+    if (wall) {
+      const box = root.querySelector('.brk');
+      box.classList.add('has-wall');
+      box.style.setProperty('--wall', `url("${wall.replace(/"/g, '%22')}")`);
+      box.style.setProperty('--dim', Math.max(0, Math.min(90, Number(params.get('walldim') ?? 55))) / 100);
+    }
     const fit = () => root.querySelector('.brk').style.setProperty('--s', Math.min(innerWidth / 1920, innerHeight / 1080));
     addEventListener('resize', fit); fit();
   }

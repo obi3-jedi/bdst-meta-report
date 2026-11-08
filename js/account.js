@@ -432,9 +432,17 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-scen
 const LOGO_SLOTS = [['store', 'Store logo', 'Left side of the feature match'], ['creator', 'Content creator logo', 'Right side of the feature match']];
 const logoUrl = (t, slot) => t?.settings?.logos?.[slot] ? `${RELAY}/logo/${t.id}/${slot}?v=${t.settings.logos[slot]}` : null;
 // Shrink big images in the browser first (logos never need more than 1200 × 600) and keep transparency
-async function shrinkLogo(file) {
+async function shrinkLogo(file, slot) {
   if (file.type === 'image/gif') return file;   // keep animations as they are
   const bmp = await createImageBitmap(file);
+  if (slot === 'wallpaper') {
+    // A full-screen background: 1920 wide is plenty, and a JPEG keeps it small (no transparency needed)
+    const k = Math.min(1, 1920 / bmp.width, 1440 / bmp.height);
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    return new Promise(r => c.toBlob(r, 'image/jpeg', .86));
+  }
   const k = Math.min(1, 1200 / bmp.width, 600 / bmp.height);
   if (k === 1 && file.size < 600 * 1024) return file;
   const c = document.createElement('canvas');
@@ -450,14 +458,14 @@ document.addEventListener('change', async e => {
   if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) { toast('Use a PNG, JPG, WebP or GIF image.'); return; }
   toast('Uploading logo…');
   try {
-    const blob = await shrinkLogo(file);
+    const blob = await shrinkLogo(file, slot);
     acct.current = await relay(`/t/${acct.current.id}/logos/${slot}`, { method: 'PUT', headers: { ...authHeader(), 'Content-Type': blob.type || file.type }, body: blob });
-    syncListed(acct.current); drawEvent(); toast('Logo saved. It shows on stream within 30 seconds.');
+    syncListed(acct.current); drawEvent(); toast(`${slot === 'wallpaper' ? 'Wallpaper' : 'Logo'} saved. It shows on stream within 30 seconds.`);
   } catch (err) { toast(err.message); }
 });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-logo-remove]'); if (!b || !acct.current) return;
-  try { acct.current = await api(`/t/${acct.current.id}/logos/${b.dataset.logoRemove}`, { method: 'DELETE' }); syncListed(acct.current); drawEvent(); toast('Logo removed.'); }
+  try { acct.current = await api(`/t/${acct.current.id}/logos/${b.dataset.logoRemove}`, { method: 'DELETE' }); syncListed(acct.current); drawEvent(); toast('Removed.'); }
   catch (err) { toast(err.message); }
 });
 
@@ -506,13 +514,20 @@ function drawEvent(el = $('hub')) {
         <label class="fld sec-fld"><span>Seconds per slide</span><input id="ev-sec" type="number" min="5" max="120" step="1" value="${esc(s.breakSeconds || 15)}"></label>
         <p class="hint">Saved for the whole team; OBS picks changes up within 30 seconds.${owner ? ' <button class="linkbtn" type="button" data-acct="rekey">Make a new OBS link</button> if the current one has leaked (the old one stops working).' : ''}</p>`)}
 
-      ${foldBox('logos', 'Logos', `
-        <p class="hint">Shown on the feature match (bottom of each side panel), the break screen and the starting/back soon cards. A PNG with a transparent background looks best. New tournaments start with your latest logos.</p>
+      ${foldBox('logos', 'Logos & wallpaper', `
+        <p class="hint">Logos show on the feature match (bottom of the right panel), the break screen and the starting/back soon cards. A PNG with a transparent background looks best. New tournaments start with your latest logos and wallpaper.</p>
         <div class="logo-slots">${LOGO_SLOTS.map(([slot, label, where]) => { const url = logoUrl(t, slot); return `<div class="logo-slot">
           <div class="logo-prev">${url ? `<img src="${esc(url)}" alt="${esc(label)}">` : `<span>No ${esc(label.toLowerCase())}</span>`}</div>
           <div class="logo-info"><b>${esc(label)}</b><small>${esc(where)}</small>
             <div class="logo-btns"><label class="btn ghost sm logo-up">${url ? 'Replace' : 'Upload'}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-logo="${slot}" hidden></label>
-            ${url ? `<button class="linkbtn" type="button" data-logo-remove="${slot}">Remove</button>` : ''}</div></div></div>`; }).join('')}</div>`, { meta: `${Object.keys(s.logos || {}).length} of 2` })}
+            ${url ? `<button class="linkbtn" type="button" data-logo-remove="${slot}">Remove</button>` : ''}</div></div></div>`; }).join('')}</div>
+        <h4 class="ev-sub">Wallpaper</h4>
+        <div class="logo-slot wall-slot"><div class="logo-prev wall-prev" style="--dim:${(s.wallDim ?? 55) / 100}">${logoUrl(t, 'wallpaper') ? `<img src="${esc(logoUrl(t, 'wallpaper'))}" alt="Wallpaper">` : '<span>No wallpaper (plain dark background)</span>'}<i class="wall-dim" aria-hidden="true"></i></div>
+          <div class="logo-info"><b>Background</b><small>Behind the break screen, single slides and the starting/back soon cards. 1920 × 1080 works best.</small>
+            <div class="logo-btns"><label class="btn ghost sm logo-up">${logoUrl(t, 'wallpaper') ? 'Replace' : 'Upload'}<input type="file" accept="image/png,image/jpeg,image/webp" data-logo="wallpaper" hidden></label>
+            ${logoUrl(t, 'wallpaper') ? '<button class="linkbtn" type="button" data-logo-remove="wallpaper">Remove</button>' : ''}</div>
+            ${logoUrl(t, 'wallpaper') ? `<label class="fld wall-dim-fld"><span>Darken so text stays readable: <output id="ev-dim-out">${s.wallDim ?? 55}%</output></span><input id="ev-dim" type="range" min="0" max="90" step="5" value="${s.wallDim ?? 55}"></label>` : ''}</div></div>`,
+        { meta: `${Object.keys(s.logos || {}).filter(k => k !== 'wallpaper').length} of 2 logos${s.logos?.wallpaper ? ' · wallpaper' : ''}` })}
 
       ${foldBox('team', 'Stream team', `
         <ul class="team-list">${(t.team || []).map(u => `<li>${u.avatar ? `<img src="${esc(u.avatar)}" alt="">` : `<span class="acct-av">${esc(u.name.slice(0, 1).toUpperCase())}</span>`}
@@ -563,6 +578,8 @@ function drawEvent(el = $('hub')) {
     for (const x of $('ev-pos').children) x.setAttribute('aria-pressed', String(x === b));
     saveSettings({ pos: b.dataset.v });
   });
+  $('ev-dim')?.addEventListener('input', e => { $('ev-dim-out').textContent = e.target.value + '%'; document.querySelector('.wall-prev')?.style.setProperty('--dim', e.target.value / 100); });
+  $('ev-dim')?.addEventListener('change', e => saveSettings({ wallDim: Number(e.target.value) }));
   $('ev-layout')?.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     for (const x of $('ev-layout').children) x.setAttribute('aria-pressed', String(x === b));

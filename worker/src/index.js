@@ -398,7 +398,7 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors(origin) });
     const path = new URL(request.url).pathname;
     try {
-      const lg = path.match(/^\/logo\/([a-z2-9]{10})\/(creator|store)$/);
+      const lg = path.match(/^\/logo\/([a-z2-9]{10})\/(creator|store|wallpaper)$/);
       if (lg && request.method === 'GET') return await logo(env, lg[1], lg[2]);
       const p = await platform(request, env, path, { readBody, allowed, meleeLookup: tournament });
       if (p instanceof Response) return p;

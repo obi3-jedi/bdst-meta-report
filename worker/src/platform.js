@@ -20,12 +20,12 @@
 //   GET    /invite/:code          -> { tournament: { name, date, venue }, invitedBy, expires, valid }
 //   POST   /invite/:code/accept   (signed in) -> joins the stream team
 //   GET    /overlay/:key          -> { meleeId, name, settings } for an OBS overlay (the key is the secret)
-//   PUT    /t/:id/logos/:slot     (team) raw PNG/JPG/WebP/GIF, slot creator|store; DELETE removes it
+//   PUT    /t/:id/logos/:slot     (team) raw PNG/JPG/WebP/GIF, slot creator|store|wallpaper; DELETE removes it
 //   GET    /logo/:id/:slot        -> the image (public, cached; add ?v=<settings.logos[slot]>)
 
 const DAY = 86400_000;
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
-const LOGO_MAX = 2 * 1024 * 1024;
+const LOGO_MAX = 2 * 1024 * 1024, WALL_MAX = 4 * 1024 * 1024;   // wallpaper: the full-screen background
 
 // A tournament's logo image (public: the overlay shows it). Cached for a long time; the URL carries ?v=<version>.
 export async function logo(env, id, slot) {
@@ -181,7 +181,7 @@ async function exchange(body, env) {
 }
 
 // ---------- tournaments ----------
-const SETTING_KEYS = { take30: 'string', take30Swap: 'boolean', take30Colors: 'boolean', mat: 'number', pos: 'string', breakSlides: 'object', breakSeconds: 'number', layout: 'string', cams: 'boolean', roundMins: 'number', format: 'string', cardSet: 'string' };
+const SETTING_KEYS = { take30: 'string', take30Swap: 'boolean', take30Colors: 'boolean', mat: 'number', pos: 'string', breakSlides: 'object', breakSeconds: 'number', layout: 'string', cams: 'boolean', roundMins: 'number', format: 'string', cardSet: 'string', wallDim: 'number' };
 const BREAK_SLIDES = ['upnext', 'standings', 'decks', 'race', 'bracket', 'recap', 'aspects'];
 function cleanSettings(s, prev = {}) {
   const out = { ...prev };
@@ -194,6 +194,7 @@ function cleanSettings(s, prev = {}) {
     if (k === 'take30' && (v.length > 400 || !/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(firebaseio\.com|firebasedatabase\.app)\//i.test(v))) throw new HttpError(400, 'That doesn’t look like a Take 30 link.');
     if (k === 'mat' && !(v >= 600 && v <= 1500)) throw new HttpError(400, 'Mat size should be between 600 and 1500 pixels.');
     if (k === 'pos' && !['top', 'bottom'].includes(v)) throw new HttpError(400, 'Banner position should be top or bottom.');
+    if (k === 'wallDim' && !(Number.isInteger(v) && v >= 0 && v <= 90)) throw new HttpError(400, 'Darkening should be between 0 and 90%.');
     if (k === 'cardSet' && !/^[A-Z0-9]{2,8}$/.test(v)) throw new HttpError(400, 'That set is not valid.');
     if (k === 'format' && !['premier', 'limited', 'constructed'].includes(v)) throw new HttpError(400, 'Format should be Premier or Limited.');
     if (k === 'roundMins' && !(Number.isInteger(v) && v >= 10 && v <= 240)) throw new HttpError(400, 'Round length should be between 10 and 240 minutes.');
@@ -338,7 +339,7 @@ export async function platform(request, env, path, { readBody, allowed, meleeLoo
       }
       if (method === 'DELETE') {
         owner();
-        if (env.DATA) await Promise.all(['creator', 'store'].map(sl => env.DATA.delete(`logo:${id}:${sl}`)));
+        if (env.DATA) await Promise.all(['creator', 'store', 'wallpaper'].map(sl => env.DATA.delete(`logo:${id}:${sl}`)));
         await env.DB.batch(['invites', 'members'].map(tb => env.DB.prepare(`DELETE FROM ${tb} WHERE tournament_id = ?`).bind(id)).concat(env.DB.prepare(`DELETE FROM tournaments WHERE id = ?`).bind(id)));
         return { body: { ok: true } };
       }
@@ -351,7 +352,7 @@ export async function platform(request, env, path, { readBody, allowed, meleeLoo
       return { body: { ok: true, team: await team(env, id) } };
     }
     // Logos shown on the overlays: creator (content creator) and store. Owner or stream team; raw image bytes.
-    if ((m = rest.match(/^\/logos\/(creator|store)$/)) && (method === 'PUT' || method === 'DELETE')) {
+    if ((m = rest.match(/^\/logos\/(creator|store|wallpaper)$/)) && (method === 'PUT' || method === 'DELETE')) {
       if (!user) throw new HttpError(401, 'Please sign in again.');
       if (!role) throw new HttpError(403, 'Only the tournament’s team can change its logos.');
       if (!env.DATA) throw new HttpError(501, 'Logo storage is not set up on this relay.');
@@ -363,7 +364,8 @@ export async function platform(request, env, path, { readBody, allowed, meleeLoo
         if (!LOGO_TYPES.includes(type)) throw new HttpError(400, 'Use a PNG, JPG, WebP or GIF image.');
         const buf = await request.arrayBuffer();
         if (!buf.byteLength) throw new HttpError(400, 'That image is empty.');
-        if (buf.byteLength > LOGO_MAX) throw new HttpError(413, 'That image is too big (2 MB at most).');
+        const max = slot === 'wallpaper' ? WALL_MAX : LOGO_MAX;
+        if (buf.byteLength > max) throw new HttpError(413, `That image is too big (${max / 1048576} MB at most).`);
         await env.DATA.put(key, buf, { metadata: { type } });
         logos[slot] = now();
       } else {
