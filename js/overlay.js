@@ -35,6 +35,7 @@
     if (st.pos === 'bottom') params.set('pos', 'bottom');
     if (st.layout === 'banner' && !params.get('layout')) params.set('layout', 'banner');
     if (st.cams && !params.get('cams')) params.set('cams', '1');
+    for (const slot of ['store', 'creator']) if (st.logos?.[slot]) params.set('logo_' + slot, `${RELAY}/logo/${info.id}/${slot}?v=${st.logos[slot]}`);
     const sig = JSON.stringify([info.meleeId, st]);
     setInterval(async () => {
       try { const now = await relay('/overlay/' + encodeURIComponent(key)); if (JSON.stringify([now.meleeId, now.settings || {}]) !== sig) location.reload(); }
@@ -172,7 +173,7 @@
     root.innerHTML = `<div class="brk">
       <div class="brk-top"><img src="bdst-logo.png" alt="BDST"><div class="brk-ev"><b></b><small></small></div><div class="brk-back">We’ll be right back</div></div>
       <div class="brk-stage"><div class="brk-slide"></div></div>
-      <div class="brk-foot"><div class="brk-dots"></div><div class="brk-bar"><i></i></div></div></div>`;
+      <div class="brk-foot"><div class="brk-dots"></div><div class="brk-bar"><i></i></div><div class="brk-logos">${logoImg('store', 'brk-logo')}${logoImg('creator', 'brk-logo')}</div></div></div>`;
     const fit = () => root.querySelector('.brk').style.setProperty('--s', Math.min(innerWidth / 1920, innerHeight / 1080));
     addEventListener('resize', fit); fit();
   }
@@ -208,7 +209,8 @@
     brkHeader('hold');
     const sc = featureSel?.scene || {};
     const el = root.querySelector('.brk-slide');
-    el.innerHTML = `<div class="brk-hold"><b>${esc(sc.title || 'Back soon')}</b><span class="cd"></span></div>`;
+    const logos = logoImg('store', 'brk-hold-logo') + logoImg('creator', 'brk-hold-logo');
+    el.innerHTML = `<div class="brk-hold"><b>${esc(sc.title || 'Back soon')}</b><span class="cd"></span>${logos ? `<div class="brk-hold-logos">${logos}</div>` : ''}</div>`;
     el.classList.add('in');
     const cd = el.querySelector('.cd');
     const tickCd = () => {
@@ -323,6 +325,7 @@
   const layout = params.get('layout') === 'banner' ? 'banner' : 'sides';
   const cams = params.get('cams') === '1';
   const fullArt = c => c?.h ? c.h.replace(/^art\//, 'art/full/') : null;
+  const logoImg = (slot, cls) => params.get('logo_' + slot) ? `<img class="${cls}" src="${esc(params.get('logo_' + slot))}" alt="">` : '';
   function featureSides(round, m, show) {
     const need = 2;   // best of 3
     const { L, R } = G;
@@ -334,12 +337,14 @@
         ? `<img src="${esc(fullArt(c))}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fs-ph',textContent:${esc(JSON.stringify(fallback))}}))">`
         : `<div class="fs-ph">${esc(fallback)}</div>`}</figure>`;
       const pips = Array.from({ length: need }, (_, i) => `<i class="${i < gameWinsOf(p, show) ? 'on' : ''}"></i>`).join('');
-      return `<div class="fs-col ${right ? 'right' : 'left'}" style="${right ? 'right' : 'left'}:0;width:calc(${L} * var(--u))">
+      const lg = logoImg(right ? 'creator' : 'store', 'fs-logo');
+      return `<div class="fs-col ${right ? 'right' : 'left'} ${lg ? 'with-logo' : ''}" style="${right ? 'right' : 'left'}:0;width:calc(${L} * var(--u))">
         <div class="fs-name"><b>${esc(p.name)}</b>
           <div class="fs-line"><span>${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</span><span class="fm-pips" title="Games won">${pips}</span></div></div>
         ${cams ? '<div class="fs-cam" aria-hidden="true"></div>' : ''}
         <div class="fs-cards">${img(lc, 'Leader', d ? d.leader : 'Leader')}${img(bc, 'Base', d ? d.rawBase : 'Base')}</div>
         <div class="fm-hp fs-hp" data-side="${right ? 1 : 0}" data-printed="${total}"><span class="fm-dmg"><b>0</b><small>/${total || '–'}</small></span><span class="fs-hp-l">Base damage</span></div>
+        ${lg ? `<div class="fs-logo-row">${lg}</div>` : ''}
       </div>`;
     };
     const [a, b] = m.players;

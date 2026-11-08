@@ -29,7 +29,7 @@
 // The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
 // Workers KV can take up to a minute to update everywhere.
 
-import { platform, roleForMelee, HttpError } from './platform.js';
+import { platform, roleForMelee, HttpError, logo } from './platform.js';
 
 const MELEE = 'https://melee.gg';
 const ALLOWED_ORIGINS = [
@@ -363,6 +363,8 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors(origin) });
     const path = new URL(request.url).pathname;
     try {
+      const lg = path.match(/^\/logo\/([a-z2-9]{10})\/(creator|store)$/);
+      if (lg && request.method === 'GET') return await logo(env, lg[1], lg[2]);
       const p = await platform(request, env, path, { readBody, allowed, meleeLookup: tournament });
       if (p instanceof Response) return p;
       if (p) return json(p.body, p.status || 200, origin, 0);

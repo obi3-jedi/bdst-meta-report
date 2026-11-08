@@ -20,8 +20,24 @@
 //   GET    /invite/:code          -> { tournament: { name, date, venue }, invitedBy, expires, valid }
 //   POST   /invite/:code/accept   (signed in) -> joins the stream team
 //   GET    /overlay/:key          -> { meleeId, name, settings } for an OBS overlay (the key is the secret)
+//   PUT    /t/:id/logos/:slot     (team) raw PNG/JPG/WebP/GIF, slot creator|store; DELETE removes it
+//   GET    /logo/:id/:slot        -> the image (public, cached; add ?v=<settings.logos[slot]>)
 
 const DAY = 86400_000;
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const LOGO_MAX = 2 * 1024 * 1024;
+
+// A tournament's logo image (public: the overlay shows it). Cached for a long time; the URL carries ?v=<version>.
+export async function logo(env, id, slot) {
+  if (!env.DATA) return new Response('Not set up', { status: 501 });
+  const { value, metadata } = await env.DATA.getWithMetadata(`logo:${id}:${slot}`, 'arrayBuffer');
+  if (!value) return new Response('No logo', { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
+  return new Response(value, { headers: {
+    'Content-Type': LOGO_TYPES.includes(metadata?.type) ? metadata.type : 'application/octet-stream',
+    'Cache-Control': 'public, max-age=604800, immutable', 'Access-Control-Allow-Origin': '*',
+    'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'",
+  } });
+}
 const SESSION_DAYS = 30;
 const INVITE_DAYS = 7;
 const INVITE_MAX_USES = 25;
@@ -207,6 +223,19 @@ async function createT(body, user, env, meleeLookup) {
       .bind(t.id, t.owner, t.meleeId, t.name, t.date, t.venue, t.bestOf, t.topCut, t.settings, rand(16), now(), now()),
     env.DB.prepare(`INSERT INTO members (tournament_id, user_id, role, added) VALUES (?, ?, 'owner', ?)`).bind(t.id, user.id, now()),
   ]);
+  // Bring the owner's logos over from their most recent other tournament, so they don't upload them every time
+  if (env.DATA) {
+    const prev = await env.DB.prepare(`SELECT id, settings FROM tournaments WHERE owner_id = ? AND id != ? ORDER BY created DESC LIMIT 1`).bind(user.id, t.id).first();
+    const logos = prev ? (JSON.parse(prev.settings || '{}').logos || {}) : {};
+    const copied = {};
+    for (const slot of Object.keys(logos)) {
+      const { value, metadata } = await env.DATA.getWithMetadata(`logo:${prev.id}:${slot}`, 'arrayBuffer');
+      if (value) { await env.DATA.put(`logo:${t.id}:${slot}`, value, { metadata }); copied[slot] = now(); }
+    }
+    if (Object.keys(copied).length) {
+      await env.DB.prepare(`UPDATE tournaments SET settings = ? WHERE id = ?`).bind(JSON.stringify({ ...JSON.parse(t.settings), logos: copied }), t.id).run();
+    }
+  }
   return shape(await getT(env, t.id), 'owner', { team: await team(env, t.id) });
 }
 
@@ -280,6 +309,7 @@ export async function platform(request, env, path, { readBody, allowed, meleeLoo
       }
       if (method === 'DELETE') {
         owner();
+        if (env.DATA) await Promise.all(['creator', 'store'].map(sl => env.DATA.delete(`logo:${id}:${sl}`)));
         await env.DB.batch(['invites', 'members'].map(tb => env.DB.prepare(`DELETE FROM ${tb} WHERE tournament_id = ?`).bind(id)).concat(env.DB.prepare(`DELETE FROM tournaments WHERE id = ?`).bind(id)));
         return { body: { ok: true } };
       }
@@ -290,6 +320,29 @@ export async function platform(request, env, path, { readBody, allowed, meleeLoo
       if (m[1] === t.owner_id) throw new HttpError(400, 'The owner can’t be removed. Delete the tournament instead.');
       await env.DB.prepare(`DELETE FROM members WHERE tournament_id = ? AND user_id = ?`).bind(id, m[1]).run();
       return { body: { ok: true, team: await team(env, id) } };
+    }
+    // Logos shown on the overlays: creator (content creator) and store. Owner or stream team; raw image bytes.
+    if ((m = rest.match(/^\/logos\/(creator|store)$/)) && (method === 'PUT' || method === 'DELETE')) {
+      if (!user) throw new HttpError(401, 'Please sign in again.');
+      if (!role) throw new HttpError(403, 'Only the tournament’s team can change its logos.');
+      if (!env.DATA) throw new HttpError(501, 'Logo storage is not set up on this relay.');
+      const slot = m[1], key = `logo:${id}:${slot}`;
+      const settings = JSON.parse(t.settings || '{}');
+      const logos = { ...(settings.logos || {}) };
+      if (method === 'PUT') {
+        const type = (request.headers.get('Content-Type') || '').split(';')[0].trim();
+        if (!LOGO_TYPES.includes(type)) throw new HttpError(400, 'Use a PNG, JPG, WebP or GIF image.');
+        const buf = await request.arrayBuffer();
+        if (!buf.byteLength) throw new HttpError(400, 'That image is empty.');
+        if (buf.byteLength > LOGO_MAX) throw new HttpError(413, 'That image is too big (2 MB at most).');
+        await env.DATA.put(key, buf, { metadata: { type } });
+        logos[slot] = now();
+      } else {
+        await env.DATA.delete(key);
+        delete logos[slot];
+      }
+      await env.DB.prepare(`UPDATE tournaments SET settings = ?, updated = ? WHERE id = ?`).bind(JSON.stringify({ ...settings, logos }), now(), id).run();
+      return { body: shape(await getT(env, id), role, { team: await team(env, id) }) };
     }
     if (rest === '/overlay-key' && method === 'POST') {
       owner();

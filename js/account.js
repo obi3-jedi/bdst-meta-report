@@ -401,6 +401,39 @@ async function pickScene(key) {
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-scene]'); if (b) pickScene(b.dataset.scene); });
 
+// ---------- logos ----------
+const LOGO_SLOTS = [['store', 'Store logo', 'Left side of the feature match'], ['creator', 'Content creator logo', 'Right side of the feature match']];
+const logoUrl = (t, slot) => t?.settings?.logos?.[slot] ? `${RELAY}/logo/${t.id}/${slot}?v=${t.settings.logos[slot]}` : null;
+// Shrink big images in the browser first (logos never need more than 1200 × 600) and keep transparency
+async function shrinkLogo(file) {
+  if (file.type === 'image/gif') return file;   // keep animations as they are
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1200 / bmp.width, 600 / bmp.height);
+  if (k === 1 && file.size < 600 * 1024) return file;
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  let blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  if (blob.size > 1.8 * 1024 * 1024) blob = await new Promise(r => c.toBlob(r, 'image/webp', .9));
+  return blob;
+}
+document.addEventListener('change', async e => {
+  const input = e.target.closest('input[data-logo]'); if (!input || !input.files[0] || !acct.current) return;
+  const slot = input.dataset.logo, file = input.files[0];
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) { toast('Use a PNG, JPG, WebP or GIF image.'); return; }
+  toast('Uploading logo…');
+  try {
+    const blob = await shrinkLogo(file);
+    acct.current = await relay(`/t/${acct.current.id}/logos/${slot}`, { method: 'PUT', headers: { ...authHeader(), 'Content-Type': blob.type || file.type }, body: blob });
+    syncListed(acct.current); drawEvent(); toast('Logo saved. It shows on stream within 30 seconds.');
+  } catch (err) { toast(err.message); }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-logo-remove]'); if (!b || !acct.current) return;
+  try { acct.current = await api(`/t/${acct.current.id}/logos/${b.dataset.logoRemove}`, { method: 'DELETE' }); syncListed(acct.current); drawEvent(); toast('Logo removed.'); }
+  catch (err) { toast(err.message); }
+});
+
 const BREAK_SLIDE_INFO = [
   ['upnext', 'Feature match', 'the match on the feature table, while a round is on'],
   ['standings', 'Standings', 'top 8 with decks'],
@@ -445,6 +478,14 @@ function drawEvent(el = $('hub')) {
         <div class="brk-pick" id="ev-slides">${BREAK_SLIDE_INFO.map(([id, label, hint]) => `<label class="switch"><input type="checkbox" value="${id}" ${breakSlidesOf(s).includes(id) ? 'checked' : ''}><span class="track-sw" aria-hidden="true"></span><span>${label}<small>${hint}</small></span></label>`).join('')}</div>
         <label class="fld sec-fld"><span>Seconds per slide</span><input id="ev-sec" type="number" min="5" max="120" step="1" value="${esc(s.breakSeconds || 15)}"></label>
         <p class="hint">Saved for the whole team; OBS picks changes up within 30 seconds.${owner ? ' <button class="linkbtn" type="button" data-acct="rekey">Make a new OBS link</button> if the current one has leaked (the old one stops working).' : ''}</p>`)}
+
+      ${foldBox('logos', 'Logos', `
+        <p class="hint">Shown on the feature match (bottom of each side panel), the break screen and the starting/back soon cards. A PNG with a transparent background looks best. New tournaments start with your latest logos.</p>
+        <div class="logo-slots">${LOGO_SLOTS.map(([slot, label, where]) => { const url = logoUrl(t, slot); return `<div class="logo-slot">
+          <div class="logo-prev">${url ? `<img src="${esc(url)}" alt="${esc(label)}">` : `<span>No ${esc(label.toLowerCase())}</span>`}</div>
+          <div class="logo-info"><b>${esc(label)}</b><small>${esc(where)}</small>
+            <div class="logo-btns"><label class="btn ghost sm logo-up">${url ? 'Replace' : 'Upload'}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-logo="${slot}" hidden></label>
+            ${url ? `<button class="linkbtn" type="button" data-logo-remove="${slot}">Remove</button>` : ''}</div></div></div>`; }).join('')}</div>`, { meta: `${Object.keys(s.logos || {}).length} of 2` })}
 
       ${foldBox('team', 'Stream team', `
         <ul class="team-list">${(t.team || []).map(u => `<li>${u.avatar ? `<img src="${esc(u.avatar)}" alt="">` : `<span class="acct-av">${esc(u.name.slice(0, 1).toUpperCase())}</span>`}
