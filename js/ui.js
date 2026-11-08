@@ -616,8 +616,11 @@ function featureMatch() {
   const roundId = pick?.roundId || streamRoundId();
   const pr = roundId ? pairingsFor(roundId) : null; if (!pr) return null;
   const rows = pr.rows.filter(x => x.players.length === 2);
-  const m = (pick && rows.find(x => String(x.table) === String(pick.table))) || pickFeatureMatch(pr.rows, state.featureSel) || rows[0];
-  return m ? { round: pr.round, match: m } : null;
+  const picked = pick && rows.find(x => String(x.table) === String(pick.table));
+  if (picked) return { round: pr.round, match: picked };
+  // The match on stream, in its on-screen order (after Swap sides)
+  const m = pickFeatureMatch(pr.rows, state.featureSel) || rows[0];
+  return m ? { round: pr.round, match: orderedMatch(m, showFor(state.featureSel, pr.round, m)) } : null;
 }
 
 // ---------- feature match on stream ----------
@@ -648,11 +651,41 @@ function renderFeaturePicker() {
     ${ok ? `<div class="row2">
       <label class="selectl">Table <select id="fp-table"><option value="">Choose a match…</option>${rows.map(x => `<option value="${x.table}" ${!sel.player && String(sel.table ?? 1) === String(x.table) ? 'selected' : ''}>Table ${x.table}: ${esc(x.players[0].name)} vs ${esc(x.players[1].name)}</option>`).join('')}</select></label>
       <label class="selectl">or follow <select id="fp-player"><option value="">a player…</option>${players.map(p => `<option value="${esc(p.id)}" ${String(sel.player) === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-    </div><p class="hint">“Table” stays on that table every round. “Follow” shows whichever match that player is in, every round. The overlay switches within a few seconds.</p>`
+    </div><p class="hint">“Table” stays on that table every round. “Follow” shows whichever match that player is in, every round. The overlay switches within a few seconds.</p>
+    ${cur && pr ? showControls(pr.round, cur) : ''}`
     : '<p class="hint">Unlock <b>Organiser tools</b> (in Follow live) to choose the feature match. Until then the overlay shows table 1, or the table in its link.</p>'}`;
   $('fp-table')?.addEventListener('change', e => { if (e.target.value) setFeature({ table: Number(e.target.value) }); });
   $('fp-player')?.addEventListener('change', e => { if (e.target.value) setFeature({ player: e.target.value }); });
 }
+// Swap sides and game wins for the match on stream (left as it appears on screen)
+function showControls(round, m) {
+  const show = showFor(state.featureSel, round, m), shown = orderedMatch(m, show);
+  const side = (p, i) => `<div class="fp-side"><span class="fp-pos">${i ? 'Right' : 'Left'}</span><b>${esc(p.name)}</b>
+    <span class="fp-games" role="group" aria-label="Games won by ${esc(p.name)}"><button class="btn ghost sm" type="button" data-wins="${esc(p.id)}" data-d="-1" aria-label="One fewer game">−</button><output>${gameWinsOf(p, show)}</output><button class="btn ghost sm" type="button" data-wins="${esc(p.id)}" data-d="1" aria-label="One more game">+</button></span></div>`;
+  return `<div class="fp-show" data-match="${esc(matchKey(round, m))}">${side(shown.players[0], 0)}
+    <button class="btn sm" type="button" id="fp-swap" title="Swap which player shows on the left">⇄ Swap sides</button>${side(shown.players[1], 1)}</div>
+    <p class="hint">Games won show as pips on the banner straight away. melee.gg only has them once the result is reported, so set them here as games finish.</p>`;
+}
+async function setShow(patch) {
+  const box = document.querySelector('.fp-show'); if (!box) return;
+  try {
+    state.featureSel = await saveShow(state.live.id, { match: box.dataset.match, ...patch });
+    renderFeaturePicker();
+  } catch (e) { toast(e.message); }
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('#fp-swap')) {
+    const box = document.querySelector('.fp-show'); const cur = state.featureSel?.show;
+    setShow({ swap: !(cur && cur.match === box.dataset.match && cur.swap) });
+    return;
+  }
+  const w = e.target.closest('[data-wins]'); if (!w) return;
+  const out = w.parentElement.querySelector('output');
+  const n = Math.max(0, Math.min(2, Number(out.textContent) + Number(w.dataset.d)));
+  if (String(n) === out.textContent) return;
+  out.textContent = n;
+  setShow({ wins: { [w.dataset.wins]: n } });
+});
 async function setFeature(value) {
   if (state.view?.replay && (value.table != null || value.player)) value = { ...value, round: state.view.at.id };
   try {

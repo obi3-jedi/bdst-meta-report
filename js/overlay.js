@@ -40,10 +40,11 @@
         return;
       }
       root.classList.add('fm-mode');
-      root.innerHTML = featureBanner(pr.round, m, params.get('pos') === 'bottom' ? 'bottom' : 'top');
+      const show = showFor(featureSel, pr.round, m), shown = orderedMatch(m, show);
+      root.innerHTML = featureBanner(pr.round, shown, params.get('pos') === 'bottom' ? 'bottom' : 'top', show);
       applyTake30();
-      lastMatch = { round: pr.round, m };
-      syncTake30Colors(pr.round, m);
+      lastMatch = { round: pr.round, m: shown };
+      syncTake30Colors(pr.round, shown);
     } else if (type === 'bracket') {
       const br = v.bracket;
       if (!br) { root.innerHTML = `<div class="ov-card"><div class="ov-empty">The bracket appears after the first Swiss round.</div></div>`; return; }
@@ -71,14 +72,14 @@
     return { mat, L, R, rake, side: L - rake, H: 116, C: 40 };
   }
   const G = geometry();
-  function featureBanner(round, m, pos) {
+  function featureBanner(round, m, pos, show) {
     const BEST_OF = 3, need = Math.ceil(BEST_OF / 2);
     const side = (p, right) => {
       const d = deckOf(p);
       const gi = d ? genericInfo.get(d.base) : null;
       const bc = d ? card('bases', d.rawBase) : null;
       const strip = gi ? `<i class="fm-strip" style="background:${ASPECT_VAR[gi.aspect]}"></i>` : bc?.i ? `<i class="fm-strip" style="background-image:url('${bc.i}')"></i>` : '<i class="fm-strip"></i>';
-      const pipsHtml = Array.from({ length: need }, (_, i) => `<i class="${i < (p.gameWins || 0) ? 'on' : ''}"></i>`).join('');
+      const pipsHtml = Array.from({ length: need }, (_, i) => `<i class="${i < gameWinsOf(p, show) ? 'on' : ''}"></i>`).join('');
       return `<div class="fm-side ${right ? 'right' : 'left'}" style="width:calc(${G.side} * var(--u))">
         <div class="fm-art">${d ? leaderImg(d.leader, 'fm-img') : '<span class="fm-img"></span>'}${strip}</div>
         <div class="fm-info"><b>${esc(p.name)}</b><span class="fm-deck">${d ? esc(d.label) : ''}</span>
@@ -180,8 +181,8 @@
     if (type !== 'feature' || !tid) return;
     const sel = await loadFeature(tid);
     if (!sel) return;
-    const prev = JSON.stringify({ table: featureSel?.table ?? null, player: featureSel?.player ?? null, round: featureSel?.round ?? null });
-    if (JSON.stringify({ table: sel.table ?? null, player: sel.player ?? null, round: sel.round ?? null }) === prev) return;
+    const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, show: x?.show ?? null });
+    if (sig(sel) === sig(featureSel)) return;
     featureSel = sel;
     // A choice picked while replaying an earlier round shows that round, as it was then
     state.asOf = sel.round || null;

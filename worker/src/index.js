@@ -19,7 +19,8 @@
 //   GET /hri/teams           -> { teams: [{ slug, name, abbreviation, members, rating, logo }] } from hri.gg (cached 1 h)
 //   GET /hri/teams/:slug     -> { slug, name, abbreviation, logo, links, roster: [{ username, displayName, rating, tier, membership }] } (cached 15 min)
 //   GET /feature/:tid        -> { tid, table, player, updated } which match the stream overlay features
-//   PUT /feature/:tid        (organiser) { table } or { player }, optionally { round } to pin a past round
+//   PUT /feature/:tid        (organiser) { table } or { player }, optionally { round } to pin a past round;
+//                            or { match, swap, wins } to swap sides / set game wins for the match on stream
 //                            (or {} to go back to the overlay link's table)
 //
 // The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
@@ -264,6 +265,22 @@ async function feature(request, env, tid, origin) {
   if (request.method === 'PUT') {
     if (!isAdmin(request, env)) return json({ error: 'That organiser passcode is not right.' }, 401, origin, 0);
     const body = await readBody(request);
+    // On-stream tweaks for the match showing now: { match: "<roundId>|<table>", swap, wins: { <playerId>: n } }.
+    // They're kept with the choice and only apply while that match is on screen.
+    if (body.match != null && body.table == null && body.player == null) {
+      if (!/^\d{1,12}\|\d{1,4}$/.test(String(body.match))) return json({ error: 'That match is not valid.' }, 400, origin, 0);
+      const cur = await (await stub.fetch('https://do/feature')).json();
+      const prev = cur.show?.match === String(body.match) ? cur.show : { match: String(body.match), swap: false, wins: {} };
+      const show = { ...prev, wins: { ...prev.wins } };
+      if (typeof body.swap === 'boolean') show.swap = body.swap;
+      if (body.wins && typeof body.wins === 'object') {
+        for (const [k, n] of Object.entries(body.wins).slice(0, 4)) {
+          if (/^\d{1,12}$/.test(k) && Number.isInteger(n) && n >= 0 && n <= 3) show.wins[k] = n;
+        }
+      }
+      const saved = await (await stub.fetch('https://do/feature', { method: 'PUT', body: JSON.stringify({ ...cur, show, updated: new Date().toISOString() }) })).json();
+      return json({ tid: Number(tid), ...saved }, 200, origin, 0);
+    }
     const value = { updated: new Date().toISOString() };
     if (body.table != null && /^\d{1,4}$/.test(String(body.table))) value.table = Number(body.table);
     else if (body.player != null && /^\d{1,12}$/.test(String(body.player))) value.player = String(body.player);

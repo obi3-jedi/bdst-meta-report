@@ -529,3 +529,14 @@ function pickFeatureMatch(rows, sel, fallbackTable = 1) {
   const table = sel?.table ?? fallbackTable;
   return two.find(x => String(x.table) === String(table)) || null;
 }
+
+// On-stream tweaks (swap sides, game wins set by hand) belong to one match: "<roundId>|<table>"
+const matchKey = (round, m) => `${round.id}|${m.table}`;
+function showFor(sel, round, m) { return sel?.show && sel.show.match === matchKey(round, m) ? sel.show : null; }
+// The match with its players in on-screen order (left first)
+function orderedMatch(m, show) { return show?.swap ? { ...m, players: [...m.players].reverse() } : m; }
+// Games won: the number set by hand on the Stream tab, otherwise melee.gg's (only known once the result is in)
+function gameWinsOf(p, show) { const n = show?.wins?.[p.id]; return n != null ? n : (p.gameWins || 0); }
+async function saveShow(tid, patch) {
+  return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify(patch) });
+}
