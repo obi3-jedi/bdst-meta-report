@@ -161,7 +161,7 @@ function mineView(el, full) {
     <div class="hub-title"><h2>My tournaments</h2><button class="btn" type="button" data-go="view=new">+ Create tournament</button></div>
     ${list.length ? `<div class="t-grid">${list.map(card).join('')}</div>`
       : `<div class="hub-empty"><p><b>No tournaments yet.</b></p><p>Create one from its melee.gg link. You get a permanent OBS overlay link and can invite your stream team.</p></div>`}
-    <p class="hint"><button class="linkbtn" type="button" data-go="">← Back to the event view</button></p></div>`;
+    <p class="hint"><button class="linkbtn" type="button" data-go="">Or follow any melee.gg event without saving it</button></p></div>`;
 }
 
 // ---------- create ----------

@@ -588,5 +588,7 @@ body.overlay #app, body.overlay .modal, body.overlay .toast { display: none !imp
 .danger { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .danger .linkbtn { color: #ff6b6e; }
 /* Signed-in pages that aren't about the followed event hide the event view below */
-body.on-hub-page #live, body.on-hub-page #replay, body.on-hub-page #tabs, body.on-hub-page #panels, body.on-hub-page .foot { display: none; }
+body.on-hub-page #live, body.on-hub-page #replay, body.on-hub-page #tabs, body.on-hub-page #panels, body.on-hub-page .foot,
+body.on-hub-page #evname, body.on-hub-page #notice, body.on-hub-page #drop, body.on-hub-page #share { display: none; }
+body.on-hub-page header { align-items: center; }
 @media (max-width: 560px) { .hub-card { padding: 16px; } .hub h2 { font-size: 24px; } }
