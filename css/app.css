@@ -873,3 +873,6 @@ body.on-hub-page header { align-items: center; }
 .wall-prev span { position: relative; z-index: 1; text-align: center; padding: 8px; }
 .wall-dim-fld { margin-top: 8px; max-width: 280px; }
 .wall-dim-fld input { padding: 0; accent-color: var(--red); }
+/* Bigger logos on the starting/back soon cards */
+.brk-hold-logos { gap: 120px; margin-top: 50px; }
+.brk-hold-logo { height: 240px; max-width: 680px; }
