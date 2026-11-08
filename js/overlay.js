@@ -21,6 +21,9 @@
     }
     const st = info.settings || {};
     params.set('t', info.meleeId);
+    params.set('name', info.name || '');
+    if (st.breakSlides && !params.get('slides')) params.set('slides', st.breakSlides.join(','));
+    if (st.breakSeconds && !params.get('sec')) params.set('sec', st.breakSeconds);
     if (st.take30) params.set('t30', st.take30);
     if (st.take30Swap) params.set('t30swap', '1');
     if (st.take30Colors === false) params.set('t30colors', '0');
@@ -46,6 +49,7 @@
   function draw() {
     computeView();
     const v = state.view, L = state.live;
+    if (type === 'break') { breakDraw(); return; }
     if (!v) { root.innerHTML = `<div class="ov-card"><div class="ov-empty">Waiting for melee.gg…</div></div>`; return; }
     if (type === 'standings') {
       const ps = currentPlayers().filter(p => !isDropped(p)).slice(0, n);
@@ -84,7 +88,7 @@
       ov.style.setProperty('--cols', br.rounds.length);
       ov.innerHTML = el.innerHTML;
     } else {
-      root.innerHTML = `<div class="ov-card"><div class="ov-empty">Unknown overlay “${esc(type)}”. Use standings, feature, bracket or decks.</div></div>`;
+      root.innerHTML = `<div class="ov-card"><div class="ov-empty">Unknown overlay “${esc(type)}”. Use standings, feature, bracket, decks or break.</div></div>`;
     }
   }
 
@@ -134,6 +138,119 @@
       <div class="fm-mid" style="left:calc(${L + 16} * var(--u));width:calc(${R - L - 32} * var(--u))">${hp(a, false)}<div class="fm-flash" hidden>New game</div><div class="fm-round">${esc(round.name)}<small>Table ${esc(m.table ?? '')}<i class="fm-live" title="Take 30 base counters"></i></small></div>${hp(b, true)}</div>
       ${side(b, true)}</div>`;
   }
+
+
+  // ---------- Break screen (?overlay=break): a full 1920 × 1080 screen cycling through the event ----------
+  // &slides=upnext,standings,decks,race,bracket,recap,aspects picks and orders the slides; &sec=15 the seconds per slide.
+  // Slides with nothing to show yet (e.g. the bracket during Swiss) are skipped.
+  const BREAK_ALL = ['upnext', 'standings', 'decks', 'race', 'bracket', 'recap', 'aspects'];
+  const brkSlides = (params.get('slides') || '').split(',').filter(x => BREAK_ALL.includes(x));
+  const brkWanted = brkSlides.length ? brkSlides : BREAK_ALL;
+  const brkSec = Math.max(5, Math.min(120, parseInt(params.get('sec'), 10) || 15));
+  let brkIdx = -1, brkTimer = null;
+
+  function brkShell() {
+    if (root.querySelector('.brk')) return;
+    root.classList.add('brk-mode');
+    root.innerHTML = `<div class="brk">
+      <div class="brk-top"><img src="bdst-logo.png" alt="BDST"><div class="brk-ev"><b></b><small></small></div><div class="brk-back">We’ll be right back</div></div>
+      <div class="brk-stage"><div class="brk-slide"></div></div>
+      <div class="brk-foot"><div class="brk-dots"></div><div class="brk-bar"><i></i></div></div></div>`;
+    const fit = () => root.querySelector('.brk').style.setProperty('--s', Math.min(innerWidth / 1920, innerHeight / 1080));
+    addEventListener('resize', fit); fit();
+  }
+  function breakDraw() {
+    brkShell();
+    const v = state.view, L = state.live;
+    root.querySelector('.brk-ev b').textContent = params.get('name') || L?.name || '';
+    root.querySelector('.brk-ev small').textContent = !v ? 'Waiting for melee.gg…'
+      : v.current ? `${v.current.name} in progress` : v.round ? `After ${v.round}` : 'Starting soon';
+    if (brkIdx < 0) brkNext();
+  }
+  const brkAvailable = () => brkWanted.filter(id => { try { return !!BREAK[id](); } catch (e) { return false; } });
+  function brkNext() {
+    clearTimeout(brkTimer);
+    const list = brkAvailable();
+    const slide = root.querySelector('.brk-slide');
+    if (!list.length) {
+      brkIdx = 0;
+      slide.innerHTML = `<div class="brk-empty"><b>We’ll be right back</b><span>${state.view ? 'Standings and decks appear here once the first round is in.' : 'Loading the event…'}</span></div>`;
+      root.querySelector('.brk-dots').innerHTML = '';
+      brkTimer = setTimeout(brkNext, 5000);
+      return;
+    }
+    const cur = list[brkIdx] ? brkWanted.indexOf(list[brkIdx]) : -1;
+    // Next slide in the chosen order after the one showing
+    const nextId = list.find(id => brkWanted.indexOf(id) > cur) || list[0];
+    brkIdx = list.indexOf(nextId);
+    const s = BREAK[nextId]();
+    slide.classList.remove('in');
+    setTimeout(() => {
+      slide.innerHTML = `<div class="brk-h"><h1>${s.title}</h1>${s.sub ? `<span>${esc(s.sub)}</span>` : ''}</div><div class="brk-body brk-${nextId}">${s.html}</div>`;
+      if (s.after) s.after(slide);
+      void slide.offsetWidth; slide.classList.add('in');
+      root.querySelector('.brk-dots').innerHTML = list.map((id, i) => `<i class="${i === brkIdx ? 'on' : ''}"></i>`).join('');
+      const bar = root.querySelector('.brk-bar i');
+      bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = `brk-bar ${brkSec}s linear forwards`;
+    }, 450);
+    brkTimer = setTimeout(brkNext, brkSec * 1000);
+  }
+  const bArt = (leader, cls = 'brk-art') => leader ? leaderImg(leader, cls) : `<span class="${cls}"></span>`;
+  const BREAK = {
+    upnext() {
+      const v = state.view; if (!v?.current) return null;
+      const pr = pairingsFor(v.current.id); if (!pr) return null;
+      const m = pickFeatureMatch(pr.rows, featureSel, table); if (!m) return null;
+      const shown = orderedMatch(m, showFor(featureSel, pr.round, m));
+      const side = (p, right) => { const d = deckOf(p); return `<div class="brk-p ${right ? 'r' : ''}">${bArt(d?.leader, 'brk-big')}<div><b>${esc(p.name)}</b><span>${d ? esc(d.label) : ''}</span>
+        <em>${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</em></div></div>`; };
+      return { title: 'Feature match', sub: `${pr.round.name} · Table ${m.table ?? ''}`, html: `${side(shown.players[0], false)}<div class="brk-vs">VS</div>${side(shown.players[1], true)}` };
+    },
+    standings() {
+      const v = state.view; if (!v?.players?.length) return null;
+      const ps = currentPlayers().filter(p => !isDropped(p)).slice(0, 8);
+      return { title: 'Standings', sub: v.round ? `After ${v.round}` : '', html: `<div class="brk-list">${ps.map(p => { const d = deckOf(p);
+        return `<div class="brk-row"><span class="rk">${p.rank}</span>${bArt(d?.leader)}<div class="nm"><b>${esc(p.name)}</b><span>${d ? esc(d.label) : ''}</span></div><span class="rec">${esc(p.record)}</span><span class="pts">${p.points ?? ''}<small>pts</small></span></div>`; }).join('')}</div>` };
+    },
+    decks() {
+      const known = currentPlayers().filter(p => p.known); if (known.length < 2) return null;
+      const groups = deckGroups(known, 'deck').slice(0, 8), top = groups[0].count;
+      return { title: 'Most played decks', sub: `${known.length} decklists`, html: `<div class="brk-list">${groups.map((g, i) =>
+        `<div class="brk-row deck"><span class="rk">${i + 1}</span>${bArt(g.leader)}<div class="nm"><b>${esc(g.label)}</b><span class="bar"><i style="width:${g.count / top * 100}%"></i></span></div><span class="rec">${pct(g.count / known.length)}</span><span class="pts">${g.count}<small>${g.count === 1 ? 'player' : 'players'}</small></span></div>`).join('')}</div>` };
+    },
+    race() {
+      const r = computeRace(); if (!r || r.finished || !r.left) return null;
+      const near = r.rows.filter(x => x.status !== 'out' || x.rank <= r.cut + 4).sort((a, b) => a.rank - b.rank).filter(x => x.rank >= Math.max(1, r.cut - 3) && x.rank <= r.cut + 4);
+      const label = { locked: 'Locked in', alive: 'Alive', out: 'Out' };
+      return { title: `Top ${r.cut} race`, sub: `${r.left} ${r.left === 1 ? 'round' : 'rounds'} to go${r.line != null ? ` · cut line ${r.line} pts` : ''}`, html: `
+        <div class="brk-stats">${['locked', 'alive', 'out'].map(k => `<div class="${k}"><b>${r.counts[k]}</b><span>${label[k]}</span></div>`).join('')}</div>
+        <div class="brk-list tight">${near.map(p => { const d = deckOf(p);
+          return `<div class="brk-row ${p.rank === r.cut ? 'cut' : ''}"><span class="rk">${p.rank}</span>${bArt(d?.leader)}<div class="nm"><b>${esc(p.name)}</b><span>${d ? esc(d.label) : ''}</span></div><span class="rec">${esc(p.record)}</span><span class="st ${p.status}">${label[p.status]}</span></div>`; }).join('')}</div>` };
+    },
+    bracket() {
+      const v = state.view, br = v?.bracket; if (!br || !v.swissFinished) return null;
+      renderBracket();
+      const html = document.getElementById('bracket').innerHTML;
+      return { title: `Top ${br.size}`, sub: br.note || '', html: `<div class="brk-fit"><div class="bracket" style="--cols:${br.rounds.length}">${html}</div></div>`,
+        after: el => { const box = el.querySelector('.brk-fit'), b = box.firstElementChild; const k = Math.min(box.clientWidth / b.scrollWidth, box.clientHeight / b.scrollHeight, 1.6); b.style.transform = `scale(${k})`; } };
+    },
+    recap() {
+      const r = computeRecap(); if (!r) return null;
+      const und = r.undefeated.slice(0, 6), ups = r.upsets.slice(0, 3), dor = r.deckOfRound;
+      if (!und.length && !ups.length && !dor) return null;
+      const col = (h, body) => `<div class="brk-col"><h3>${h}</h3>${body}</div>`;
+      return { title: `${esc(r.round)} recap`, sub: '', html:
+        (und.length ? col('Undefeated', und.map(p => { const d = deckOf(p); return `<div class="brk-mini">${bArt(d?.leader)}<div><b>${esc(p.name)}</b><span>${esc(p.record)}${d ? ' · ' + esc(d.label) : ''}</span></div></div>`; }).join('')) : '')
+        + (ups.length ? col('Upsets', ups.map(u => `<div class="brk-mini up"><div><b>${esc(u.winner.name)}</b><span>#${u.wr} beat #${u.lr} ${esc(u.loser.name)} · ${esc(u.score)}</span></div></div>`).join('')) : '')
+        + (dor ? col('Deck of the round', `<div class="brk-mini big">${bArt(dor.leader, 'brk-big')}<div><b>${esc(dor.label)}</b><span>${dor.w} wins, ${dor.l} ${dor.l === 1 ? 'loss' : 'losses'}</span></div></div>`) : '') };
+    },
+    aspects() {
+      const known = currentPlayers().filter(p => p.known); if (known.length < 4) return null;
+      const n = known.length, has = a => known.filter(p => deckAspects(p).includes(a)).length;
+      return { title: 'Aspects in the room', sub: `${n} decks · a deck counts for every aspect on its leader and base`, html: `<div class="brk-asp">${ASPECTS.map(a => { const c = has(a);
+        return `<div class="ba-${a.toLowerCase()}"><span class="bar"><i style="height:${c / n * 100}%"></i></span><b>${pct(c / n)}</b><span>${a}</span></div>`; }).join('')}</div>` };
+    },
+  };
 
   // Live base counters from Take 30 (&t30=<link>, &t30swap=1 if its players are the other way round)
   const t30 = take30Url(params.get('t30'));
@@ -206,7 +323,7 @@
   // The feature match picked on the Stream tab or in Pairings (checked every few seconds)
   let featureSel = null;
   async function checkFeature() {
-    if (type !== 'feature' || !tid) return;
+    if ((type !== 'feature' && type !== 'break') || !tid) return;
     const sel = await loadFeature(tid);
     if (!sel) return;
     const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, show: x?.show ?? null });

@@ -249,6 +249,17 @@ function overlayUrl(type, t = openTournament()) {
   return `${base}?overlay=${type}&k=${t.overlayKey}${extra}`;
 }
 
+const BREAK_SLIDE_INFO = [
+  ['upnext', 'Feature match', 'the match on the feature table, while a round is on'],
+  ['standings', 'Standings', 'top 8 with decks'],
+  ['decks', 'Most played decks', 'top 8 decks with share'],
+  ['race', 'Top cut race', 'during Swiss: who’s locked in, alive or out'],
+  ['bracket', 'Bracket', 'once Swiss is finished'],
+  ['recap', 'Round recap', 'undefeated players, upsets, deck of the round'],
+  ['aspects', 'Aspects', 'colours in the room'],
+];
+const breakSlidesOf = s => s.breakSlides?.length ? s.breakSlides : BREAK_SLIDE_INFO.map(x => x[0]);
+
 function drawEvent(el = $('hub')) {
   const t = acct.current; if (!t || !t.role) return;
   const owner = t.role === 'owner';
@@ -275,6 +286,15 @@ function drawEvent(el = $('hub')) {
             <button type="button" data-v="top" aria-pressed="${s.pos !== 'bottom'}">Top</button><button type="button" data-v="bottom" aria-pressed="${s.pos === 'bottom'}">Bottom</button></div></div>
         </div>
         <p class="hint">Changes reach OBS within 30 seconds. Keep this link private: anyone with it can show your overlay.${owner ? ' <button class="linkbtn" type="button" data-acct="rekey">Make a new link</button> (the old one stops working).' : ''}</p>
+      </section>
+
+      <section class="ev-box">
+        <h3>Break screen</h3>
+        <p>A full-screen <b>Browser Source</b> (1920 × 1080) for breaks between rounds. It cycles through the slides below and skips any with nothing to show yet.</p>
+        <div class="copyline"><code>${esc(overlayUrl('break', t).replace(/k=[a-f0-9]+/, 'k=••••••'))}</code><button class="btn ghost sm" type="button" data-copy="${esc(overlayUrl('break', t))}">Copy link</button></div>
+        <div class="brk-pick" id="ev-slides">${BREAK_SLIDE_INFO.map(([id, label, hint]) => `<label class="switch"><input type="checkbox" value="${id}" ${breakSlidesOf(s).includes(id) ? 'checked' : ''}><span class="track-sw" aria-hidden="true"></span><span>${label}<small>${hint}</small></span></label>`).join('')}</div>
+        <label class="fld sec-fld"><span>Seconds per slide</span><input id="ev-sec" type="number" min="5" max="120" step="1" value="${esc(s.breakSeconds || 15)}"></label>
+        <p class="hint"><a href="${esc(overlayUrl('break', t))}" target="_blank" rel="noopener">Preview ↗</a></p>
       </section>
 
       <section class="ev-box">
@@ -315,6 +335,12 @@ function drawEvent(el = $('hub')) {
     for (const x of $('ev-pos').children) x.setAttribute('aria-pressed', String(x === b));
     saveSettings({ pos: b.dataset.v });
   });
+  $('ev-slides')?.addEventListener('change', () => {
+    const on = [...$('ev-slides').querySelectorAll('input:checked')].map(x => x.value);
+    if (!on.length) { toast('Keep at least one slide on.'); drawEvent(); return; }
+    saveSettings({ breakSlides: on });
+  });
+  $('ev-sec')?.addEventListener('change', e => saveSettings({ breakSeconds: Math.max(5, Math.min(120, Math.round(Number(e.target.value)) || 15)) }));
   $('ev-edit')?.addEventListener('submit', async e => {
     e.preventDefault();
     const msg = $('ee-msg'); msg.textContent = 'Saving…';
