@@ -319,6 +319,17 @@ async function feature(request, env, tid, origin) {
       const { round, asOf, ...rest } = cur;
       return save(body.asOf === null ? rest : { ...rest, asOf: Number(body.asOf) });
     }
+    // Round clock on the feature match: { clock: { mins } } starts it, { clock: { add: ±mins } } adjusts it, { clock: null } clears it
+    if ('clock' in body && body.table == null && body.player == null && body.match == null && !body.scene) {
+      const { clock, ...rest } = cur;
+      if (body.clock === null) return save(rest);
+      const mins = Number(body.clock?.mins), add = Number(body.clock?.add);
+      let endsAt;
+      if (mins > 0 && mins <= 240) endsAt = Date.now() + mins * 60000;
+      else if (add && Math.abs(add) <= 60 && clock?.endsAt) endsAt = clock.endsAt + add * 60000;
+      else return json({ error: 'That round clock is not valid.' }, 400, origin, 0);
+      return save({ ...rest, clock: { endsAt: Math.min(endsAt, Date.now() + 240 * 60000) } });
+    }
     // Switch the program scene: { scene: { mode, slide?, title?, until? } }
     if (body.scene && body.table == null && body.player == null && body.match == null) return save({ ...cur, scene: cleanScene(body.scene) });
     // On-stream tweaks for the match showing now: { match: "<roundId>|<table>", swap, wins: { <playerId>: n } }.
@@ -336,7 +347,7 @@ async function feature(request, env, tid, origin) {
       return save({ ...cur, show });
     }
     // A new feature match choice (the scene carries over)
-    const value = { ...(cur.scene ? { scene: cur.scene } : {}), ...(cur.asOf ? { asOf: cur.asOf } : {}) };
+    const value = { ...(cur.scene ? { scene: cur.scene } : {}), ...(cur.asOf ? { asOf: cur.asOf } : {}), ...(cur.clock ? { clock: cur.clock } : {}) };
     if (body.table != null && /^\d{1,4}$/.test(String(body.table))) value.table = Number(body.table);
     else if (body.player != null && /^\d{1,12}$/.test(String(body.player))) value.player = String(body.player);
     // A choice made while replaying an earlier round pins the overlay to that round

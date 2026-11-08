@@ -284,6 +284,12 @@ function liveControlHtml(t) {
       <div class="lc-groups">${SCENES.map(g => `<div class="lc-group"><h4>${g.group}</h4><div class="lc-btns">${g.items.map(i =>
         `<button type="button" class="lc-btn" data-scene="${esc(i.key)}" aria-pressed="false">${esc(i.label)}${i.hint ? `<small>${esc(i.hint)}</small>` : ''}</button>`).join('')}
         ${g.group === 'Holding card' ? `<label class="lc-timer">Countdown <select id="lc-mins"><option value="0">No timer</option>${[2, 5, 10, 15, 20, 30].map(n => `<option value="${n}" ${n === 10 ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>` : ''}</div></div>`).join('')}
+        <div class="lc-group"><h4>Round clock <span class="lc-clock" id="lc-clock"></span></h4><div class="lc-btns">
+          <label class="lc-timer"><select id="lc-clock-mins" aria-label="Round length">${[30, 40, 45, 50, 55, 60, 75, 90].map(n => `<option value="${n}" ${n === 50 ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>
+          <button type="button" class="lc-btn sm" data-clock="start">Start</button>
+          <button type="button" class="lc-btn sm" data-clock="-1" aria-label="One minute less">−1 min</button>
+          <button type="button" class="lc-btn sm" data-clock="1" aria-label="One minute more">+1 min</button>
+          <button type="button" class="lc-btn sm" data-clock="clear">Clear</button></div></div>
         <p class="hint lc-more">Pick the feature match, swap sides, set games won and run Take 30 in the <button class="linkbtn" type="button" data-acct="controls">Stream tab ↓</button></p></div>
     </div>
     <div class="copyline"><code>${esc(prog.replace(/k=[a-f0-9]+/, 'k=••••••'))}</code><button class="btn ghost sm" type="button" data-copy="${esc(prog)}">Copy OBS link</button></div>
@@ -356,8 +362,27 @@ function markReplay() {
   el.innerHTML = id ? `<span><b>Replay on stream:</b> everything shows the event as it was after <b>${esc(r?.name || 'an earlier round')}</b>.</span>
     <button class="btn sm" type="button" data-acct="stream-live">Back to live</button>` : '';
 }
+// Round clock: shown on the feature match (side panels layout)
+function markClock() {
+  const el = $('lc-clock'); if (!el) return;
+  const c = acct.live?.value?.clock;
+  if (!c?.endsAt) { el.textContent = 'off'; el.className = 'lc-clock'; return; }
+  const left = Math.round((c.endsAt - Date.now()) / 1000);
+  el.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} left` : 'Time';
+  el.className = 'lc-clock on' + (left <= 0 ? ' over' : '');
+}
+setInterval(markClock, 1000);
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-clock]'); if (!b || !acct.current) return;
+  const k = b.dataset.clock;
+  const clock = k === 'clear' ? null : k === 'start' ? { mins: Number($('lc-clock-mins').value) } : { add: Number(k) };
+  if (clock?.add && !acct.live?.value?.clock) { toast('Start the round clock first.'); return; }
+  try { const v = await saveClock(acct.current.meleeId, clock); if (acct.live) acct.live.value = v; markClock(); }
+  catch (err) { toast(err.message); }
+});
 function markScene() {
   markReplay();
+  markClock();
   const sc = acct.live?.value?.scene || acct.pendingScene || null;
   const key = acct.pendingScene ? sceneKey(acct.pendingScene) : sceneKey(sc);
   document.querySelectorAll('[data-scene]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scene === key)));
@@ -406,10 +431,13 @@ function drawEvent(el = $('hub')) {
 
     <div class="ev-grid">
       ${foldBox('ovs', 'Overlay settings', `
-        <h4 class="ev-sub">Feature match banner</h4>
+        <h4 class="ev-sub">Feature match</h4>
+        <div class="fld"><span>Layout</span><div class="seg" role="group" aria-label="Feature match layout" id="ev-layout">
+          <button type="button" data-v="sides" aria-pressed="${s.layout !== 'banner'}">Side panels</button><button type="button" data-v="banner" aria-pressed="${s.layout === 'banner'}">Banner</button></div></div>
+        <label class="switch"><input type="checkbox" id="ev-cams" ${s.cams ? 'checked' : ''}><span class="track-sw" aria-hidden="true"></span>Leave a window in each side panel for a player camera</label>
         <div class="fld-row">
           <label class="fld"><span>Mat size on screen (px)</span><input id="ev-mat" type="number" min="600" max="1500" step="10" value="${esc(s.mat || 1080)}"></label>
-          <div class="fld"><span>Banner</span><div class="seg" role="group" aria-label="Banner position" id="ev-pos">
+          <div class="fld"><span>Banner position (banner layout)</span><div class="seg" role="group" aria-label="Banner position" id="ev-pos">
             <button type="button" data-v="top" aria-pressed="${s.pos !== 'bottom'}">Top</button><button type="button" data-v="bottom" aria-pressed="${s.pos === 'bottom'}">Bottom</button></div></div>
         </div>
         <h4 class="ev-sub">Break screen slides</h4>
@@ -463,6 +491,12 @@ function drawEvent(el = $('hub')) {
     for (const x of $('ev-pos').children) x.setAttribute('aria-pressed', String(x === b));
     saveSettings({ pos: b.dataset.v });
   });
+  $('ev-layout')?.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    for (const x of $('ev-layout').children) x.setAttribute('aria-pressed', String(x === b));
+    saveSettings({ layout: b.dataset.v });
+  });
+  $('ev-cams')?.addEventListener('change', e => saveSettings({ cams: e.target.checked }));
   $('ev-slides')?.addEventListener('change', () => {
     const on = [...$('ev-slides').querySelectorAll('input:checked')].map(x => x.value);
     if (!on.length) { toast('Keep at least one slide on.'); drawEvent(); return; }

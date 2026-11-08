@@ -566,3 +566,7 @@ async function saveScene(tid, scene) {
 async function saveStreamAsOf(tid, roundId) {
   return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ asOf: roundId ? Number(roundId) : null }) });
 }
+// Round clock on the feature match: { mins } starts it, { add } adjusts it, null clears it
+async function saveClock(tid, clock) {
+  return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ clock }) });
+}

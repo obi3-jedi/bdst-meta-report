@@ -33,6 +33,8 @@
     if (st.take30Colors === false) params.set('t30colors', '0');
     if (st.mat) params.set('mat', st.mat);
     if (st.pos === 'bottom') params.set('pos', 'bottom');
+    if (st.layout === 'banner' && !params.get('layout')) params.set('layout', 'banner');
+    if (st.cams && !params.get('cams')) params.set('cams', '1');
     const sig = JSON.stringify([info.meleeId, st]);
     setInterval(async () => {
       try { const now = await relay('/overlay/' + encodeURIComponent(key)); if (JSON.stringify([now.meleeId, now.settings || {}]) !== sig) location.reload(); }
@@ -87,7 +89,8 @@
       root.classList.remove('brk-mode');
       root.classList.add('fm-mode');
       const show = showFor(featureSel, pr.round, m), shown = orderedMatch(m, show);
-      root.innerHTML = featureBanner(pr.round, shown, params.get('pos') === 'bottom' ? 'bottom' : 'top', show);
+      root.innerHTML = layout === 'banner' ? featureBanner(pr.round, shown, params.get('pos') === 'bottom' ? 'bottom' : 'top', show) : featureSides(pr.round, shown, show);
+      tickClock();
       applyTake30();
       lastMatch = { round: pr.round, m: shown };
       syncTake30Colors(pr.round, shown);
@@ -312,6 +315,56 @@
     },
   };
 
+  // ---------- Feature match, side panels (the default layout) ----------
+  // The camera's square mat sits in the middle; each player gets a full-height column either side of it with
+  // their name, record and game wins, an optional window for a player camera, their leader and base cards,
+  // and the base damage counter. A small plate on top shows the round, table and round clock.
+  // &layout=banner uses the older raked banner instead; &cams=1 leaves a window for player cameras.
+  const layout = params.get('layout') === 'banner' ? 'banner' : 'sides';
+  const cams = params.get('cams') === '1';
+  const fullArt = c => c?.h ? c.h.replace(/^art\//, 'art/full/') : null;
+  function featureSides(round, m, show) {
+    const need = 2;   // best of 3
+    const { L, R } = G;
+    const col = (p, right) => {
+      const d = deckOf(p);
+      const lc = d ? card('leaders', d.leader) : null, bc = d ? card('bases', d.rawBase) : null;
+      const total = bc?.hp ?? '';
+      const img = (c, label, fallback) => `<figure class="fs-card"><figcaption>${label}</figcaption>${fullArt(c)
+        ? `<img src="${esc(fullArt(c))}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fs-ph',textContent:${esc(JSON.stringify(fallback))}}))">`
+        : `<div class="fs-ph">${esc(fallback)}</div>`}</figure>`;
+      const pips = Array.from({ length: need }, (_, i) => `<i class="${i < gameWinsOf(p, show) ? 'on' : ''}"></i>`).join('');
+      return `<div class="fs-col ${right ? 'right' : 'left'}" style="${right ? 'right' : 'left'}:0;width:calc(${L} * var(--u))">
+        <div class="fs-name"><b>${esc(p.name)}</b>
+          <div class="fs-line"><span>${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</span><span class="fm-pips" title="Games won">${pips}</span></div></div>
+        ${cams ? '<div class="fs-cam" aria-hidden="true"></div>' : ''}
+        <div class="fs-cards">${img(lc, 'Leader', d ? d.leader : 'Leader')}${img(bc, 'Base', d ? d.rawBase : 'Base')}</div>
+        <div class="fm-hp fs-hp" data-side="${right ? 1 : 0}" data-printed="${total}"><span class="fm-dmg"><b>0</b><small>/${total || '–'}</small></span><span class="fs-hp-l">Base damage</span></div>
+      </div>`;
+    };
+    const [a, b] = m.players;
+    const ev = params.get('name') || state.live?.name || '';
+    return `<div class="fs ${cams ? 'cams' : ''}">
+      ${col(a, false)}${col(b, true)}
+      <div class="fs-top" style="left:calc(${L} * var(--u));width:calc(${R - L} * var(--u))"><div class="fs-plate">
+        <span>${esc(round.name)}</span><i></i><span>Table ${esc(m.table ?? '')}</span><span class="fs-clock" hidden></span><i class="fm-live" title="Take 30 base counters"></i></div>
+        <div class="fm-flash" hidden>New game</div></div>
+      ${ev ? `<div class="fs-bottom" style="left:calc(${L} * var(--u));width:calc(${R - L} * var(--u))"><div class="fs-plate small">${esc(ev)}</div></div>` : ''}
+    </div>`;
+  }
+  // Round clock (started from Live control): counts down on the feature match; "Time" when it runs out
+  function tickClock() {
+    const el = root.querySelector('.fs-clock'); if (!el) return;
+    const c = featureSel?.clock;
+    el.hidden = !c?.endsAt;
+    if (!c?.endsAt) return;
+    const left = Math.round((c.endsAt - Date.now()) / 1000);
+    el.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Time';
+    el.classList.toggle('over', left <= 0);
+    el.classList.toggle('low', left > 0 && left <= 300);
+  }
+  setInterval(tickClock, 1000);
+
   // Live base counters from Take 30 (&t30=<link>, &t30swap=1 if its players are the other way round)
   const t30 = take30Url(params.get('t30'));
   const t30swap = params.get('t30swap') === '1';
@@ -385,7 +438,7 @@
   const usesFeature = ['feature', 'break', 'program'].includes(linkType);
   async function applyFeature(sel) {
     if (!sel) return;
-    const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, asOf: x?.asOf ?? null, show: x?.show ?? null });
+    const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, asOf: x?.asOf ?? null, show: x?.show ?? null, clock: x?.clock ?? null });
     const sceneSig = x => JSON.stringify(x?.scene ?? null);
     const selChanged = sig(sel) !== sig(featureSel), sceneChanged = sceneSig(sel) !== sceneSig(featureSel);
     if (!selChanged && !sceneChanged) return;

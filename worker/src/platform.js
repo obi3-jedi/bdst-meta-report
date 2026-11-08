@@ -140,7 +140,7 @@ async function exchange(body, env) {
 }
 
 // ---------- tournaments ----------
-const SETTING_KEYS = { take30: 'string', take30Swap: 'boolean', take30Colors: 'boolean', mat: 'number', pos: 'string', breakSlides: 'object', breakSeconds: 'number' };
+const SETTING_KEYS = { take30: 'string', take30Swap: 'boolean', take30Colors: 'boolean', mat: 'number', pos: 'string', breakSlides: 'object', breakSeconds: 'number', layout: 'string', cams: 'boolean' };
 const BREAK_SLIDES = ['upnext', 'standings', 'decks', 'race', 'bracket', 'recap', 'aspects'];
 function cleanSettings(s, prev = {}) {
   const out = { ...prev };
@@ -153,6 +153,7 @@ function cleanSettings(s, prev = {}) {
     if (k === 'take30' && (v.length > 400 || !/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(firebaseio\.com|firebasedatabase\.app)\//i.test(v))) throw new HttpError(400, 'That doesn’t look like a Take 30 link.');
     if (k === 'mat' && !(v >= 600 && v <= 1500)) throw new HttpError(400, 'Mat size should be between 600 and 1500 pixels.');
     if (k === 'pos' && !['top', 'bottom'].includes(v)) throw new HttpError(400, 'Banner position should be top or bottom.');
+    if (k === 'layout' && !['sides', 'banner'].includes(v)) throw new HttpError(400, 'Layout should be sides or banner.');
     if (k === 'breakSlides' && !(Array.isArray(v) && v.length <= BREAK_SLIDES.length && v.every(x => BREAK_SLIDES.includes(x)) && new Set(v).size === v.length)) throw new HttpError(400, 'Those break screen slides are not valid.');
     if (k === 'breakSeconds' && !(Number.isInteger(v) && v >= 5 && v <= 120)) throw new HttpError(400, 'Seconds per slide should be between 5 and 120.');
     out[k] = v;
