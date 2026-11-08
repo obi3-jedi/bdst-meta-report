@@ -90,6 +90,31 @@ export async function roleForMelee(request, env, meleeId) {
   return roles.includes('owner') ? 'owner' : roles.length ? 'stream' : null;
 }
 
+// ---------- who may use the relay ----------
+// Organisers (Discord IDs in the ORGANISERS setting) may create tournaments; with no list set, anyone signed in may.
+export const isOrganiser = (env, uid) => { const list = String(env.ORGANISERS || '').split(',').map(x => x.trim()).filter(Boolean); return !list.length || list.includes(String(uid)); };
+// Live data is only for the stream: an organiser, a member of any tournament, or an OBS overlay with a valid key.
+// Answers are remembered for a minute per worker so this costs at most a lookup or two a minute per person.
+const accessCache = new Map();
+export async function hasAccess(request, env, url) {
+  if (!env.DB) return true;
+  const auth = (request.headers.get('Authorization') || '').match(/^Bearer ([a-f0-9]{48})$/)?.[1] || '';
+  const key = request.headers.get('X-Overlay-Key') || url.searchParams.get('k') || '';
+  const id = auth ? 's:' + auth : /^[a-f0-9]{32}$/.test(key) ? 'k:' + key : null;
+  if (!id) return false;
+  const hit = accessCache.get(id);
+  if (hit && hit.until > now()) return hit.ok;
+  let ok = false;
+  if (id.startsWith('k:')) ok = !!(await env.DB.prepare(`SELECT 1 FROM tournaments WHERE overlay_key = ?`).bind(key).first());
+  else {
+    const u = await currentUser(request, env);
+    ok = !!u && (isOrganiser(env, u.id) || !!(await env.DB.prepare(`SELECT 1 FROM members WHERE user_id = ? LIMIT 1`).bind(u.id).first()));
+  }
+  if (accessCache.size > 2000) accessCache.clear();
+  accessCache.set(id, { ok, until: now() + 60_000 });
+  return ok;
+}
+
 // ---------- Discord ----------
 function redirectUri(request) { return new URL('/auth/discord/callback', request.url).toString(); }
 
@@ -282,12 +307,13 @@ export async function platform(request, env, path, { readBody, allowed, meleeLoo
     need(env);
     const user = await requireUser(request, env);
     const rows = await env.DB.prepare(`SELECT t.*, m.role FROM members m JOIN tournaments t ON t.id = m.tournament_id WHERE m.user_id = ? ORDER BY COALESCE(t.date, '') DESC, t.created DESC`).bind(user.id).all();
-    return { body: { user, tournaments: rows.results.map(r => shape(r, r.role)) } };
+    return { body: { user, organiser: isOrganiser(env, user.id), tournaments: rows.results.map(r => shape(r, r.role)) } };
   }
 
   if (path === '/t' && method === 'POST') {
     need(env);
     const user = await requireUser(request, env);
+    if (!isOrganiser(env, user.id)) throw new HttpError(403, 'Only BDST organisers can create tournaments. Ask for an invite link to join a stream team.');
     const count = await env.DB.prepare(`SELECT COUNT(*) AS n FROM tournaments WHERE owner_id = ?`).bind(user.id).first();
     if (count.n >= 200) throw new HttpError(400, 'You have a lot of tournaments. Delete some old ones first.');
     return { status: 201, body: await createT(await readBody(request), user, env, meleeLookup) };

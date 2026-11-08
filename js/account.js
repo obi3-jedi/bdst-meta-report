@@ -58,7 +58,7 @@ async function signOut() {
 }
 async function loadMe() {
   if (!acct.token) { acct.loaded = true; return; }
-  try { const me = await api('/me'); acct.user = me.user; acct.tournaments = me.tournaments; }
+  try { const me = await api('/me'); acct.user = me.user; acct.organiser = !!me.organiser; acct.tournaments = me.tournaments; }
   catch (e) { if (e.status !== 401) toast(e.message); }
   acct.loaded = true;
 }
@@ -100,7 +100,7 @@ function renderAccount() {
       ${u.avatar ? `<img src="${esc(u.avatar)}" alt="">` : `<span class="acct-av">${esc(u.name.slice(0, 1).toUpperCase())}</span>`}<span>${esc(u.name)}</span></button>
     <div class="acct-pop" role="menu" hidden>
       <button type="button" role="menuitem" data-acct="mine">My tournaments</button>
-      <button type="button" role="menuitem" data-acct="new">Create tournament</button>
+      ${acct.organiser ? '<button type="button" role="menuitem" data-acct="new">Create tournament</button>' : ''}
       <button type="button" role="menuitem" data-acct="signout">Sign out</button>
     </div></div>`;
 }
@@ -117,31 +117,34 @@ const roleLabel = r => r === 'owner' ? 'Owner' : 'Stream team';
 function renderHub() {
   const el = $('hub'); if (!el) return;
   const r = route();
-  el.classList.toggle('hub-page', r.name !== 'home');
-  document.body.classList.toggle('on-hub-page', r.name === 'mine' || r.name === 'new' || r.name === 'invite');
-  if (!acct.loaded) { el.hidden = r.name === 'home'; el.innerHTML = r.name === 'home' ? '' : '<div class="hub-card"><p class="hint">Loading…</p></div>'; return; }
+  el.classList.toggle('hub-page', true);
+  // The event view (tabs, live data, graphics) only shows inside a tournament the user is part of
+  document.body.classList.toggle('on-hub-page', r.name !== 'event' || !acct.user || !(acct.current?.id === r.id && acct.current.role));
+  if (!acct.loaded) { el.hidden = false; el.innerHTML = '<div class="hub-card"><p class="hint">Loading…</p></div>'; return; }
   el.hidden = false;
   if (r.name !== 'event') stopLive();
   if (r.name === 'invite') return inviteView(el, r.code);
   if (r.name === 'event') return eventView(el, r.id);
-  if (!acct.user) {
-    if (r.name !== 'home') return signInView(el, r.name === 'new' ? 'Sign in to create a tournament.' : 'Sign in to see your tournaments.');
-    el.innerHTML = `<div class="hub-strip"><div><b>Running a stream?</b> Sign in to save your tournaments, get a permanent OBS link and invite your stream team.</div>
-      <button class="btn" type="button" data-acct="signin">${DISCORD_ICON}Sign in with Discord</button></div>`;
-    return;
-  }
-  if (r.name === 'new') return createView(el);
-  if (r.name === 'mine') return mineView(el, true);
-  return mineView(el, false);
+  if (!acct.user) return signInView(el, 'The BDST tournament assistant is for our stream team.');
+  if (r.name === 'new') return acct.organiser ? createView(el) : noAccessView(el);
+  if (!acct.organiser && !acct.tournaments.length) return noAccessView(el);
+  return mineView(el, true);
 }
 
+function noAccessView(el) {
+  el.innerHTML = `<div class="hub-card hub-login">
+    <img src="bdst-logo.png" alt="BDST" class="hub-logo">
+    <h2>You’re signed in</h2>
+    <p>You’re not on a stream team yet. Ask a BDST organiser for an <b>invite link</b>, open it, and the tournament appears here.</p>
+    <p class="hint">Signed in as ${esc(acct.user.name)}. <button class="linkbtn" type="button" data-acct="signout">Sign out</button></p></div>`;
+}
 function signInView(el, why) {
   el.innerHTML = `<div class="hub-card hub-login">
     <img src="bdst-logo.png" alt="BDST" class="hub-logo">
     <h2>Sign in</h2>
     <p>${esc(why)} We use your Discord account, so there’s no new password to remember.</p>
     <button class="btn" type="button" data-acct="signin">${DISCORD_ICON}Sign in with Discord</button>
-    <p class="hint">We only see your Discord name and picture. <button class="linkbtn" type="button" data-go="">Just follow an event instead</button></p></div>`;
+    <p class="hint">We only see your Discord name and picture. Stream team members get access through an invite link from an organiser.</p></div>`;
 }
 
 // My tournaments: full page, or a compact strip on the main page
@@ -159,10 +162,10 @@ function mineView(el, full) {
     return;
   }
   el.innerHTML = `<div class="hub-card">
-    <div class="hub-title"><h2>My tournaments</h2><button class="btn" type="button" data-go="view=new">+ Create tournament</button></div>
+    <div class="hub-title"><h2>My tournaments</h2>${acct.organiser ? '<button class="btn" type="button" data-go="view=new">+ Create tournament</button>' : ''}</div>
     ${list.length ? `<div class="t-grid">${list.map(card).join('')}</div>`
-      : `<div class="hub-empty"><p><b>No tournaments yet.</b></p><p>Create one from its melee.gg link. You get a permanent OBS overlay link and can invite your stream team.</p></div>`}
-    <p class="hint"><button class="linkbtn" type="button" data-go="">Or follow any melee.gg event without saving it</button></p></div>`;
+      : `<div class="hub-empty"><p><b>No tournaments yet.</b></p><p>${acct.organiser ? 'Create one from its melee.gg link. You get a permanent OBS overlay link and can invite your stream team.' : 'Open an invite link from an organiser to join a stream team.'}</p></div>`}
+    </div>`;
 }
 
 // Event formats: choosing one sets up how decks are found and what the overlays show
@@ -258,6 +261,7 @@ async function eventView(el, id) {
       return;
     }
     // Load the melee.gg event below and bring in the team's shared Take 30 settings
+    document.body.classList.remove('on-hub-page');
     applyTournamentSettings(t);
     if (String(state.liveId) !== String(t.meleeId)) follow(String(t.meleeId));
     else afterAccountChange();
@@ -357,7 +361,7 @@ function startLive(t) {
     live.value = v; live.ok = true; markScene();
     // Keep the Stream tab's feature match controls in step with the rest of the team
     if (String(state.liveId) === String(t.meleeId)) { state.featureSel = v; if (state.view && !document.activeElement?.closest('#feature-picker')) renderFeaturePicker(); }
-  });
+  }, t.overlayKey);
   // Connection status from the socket's own events isn't exposed; treat a recent message as connected
   acct.live = live;
 }

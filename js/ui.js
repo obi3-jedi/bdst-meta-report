@@ -67,8 +67,7 @@ $('tabs').addEventListener('keydown', e => {
 
 // "Follow a tournament" placeholders on tabs that need live data
 document.querySelectorAll('.needs-live').forEach(el => {
-  el.innerHTML = `<p>${esc(el.dataset.msg)}</p><button class="btn ghost" type="button">Follow a tournament</button>`;
-  el.querySelector('button').onclick = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); $('melee-url').focus(); };
+  el.innerHTML = `<p>${esc(el.dataset.msg)}</p><button class="btn ghost" type="button" data-go="view=mine">My tournaments</button>`;
 });
 
 // ---------- render everything ----------
@@ -1113,10 +1112,8 @@ function boot() {
   render();
   const params = new URLSearchParams(location.search);
   if (params.get('overlay')) return;            // overlay.js takes over
-  const saved = parseTournament(params.get('t') || '') || store(true, 'bdst-live');
   if (store(true, 'bdst-auto')) { $('auto').checked = true; setAuto(true); }
-  // A tournament page (?event=) follows its own melee.gg event once it loads
-  if (saved && !params.get('event')) follow(saved);
+  // Live events only load inside a tournament page (?event=), for its stream team
   acctBoot();
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const hadController = !!navigator.serviceWorker.controller;

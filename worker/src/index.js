@@ -30,7 +30,7 @@
 // The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
 // Workers KV can take up to a minute to update everywhere.
 
-import { platform, roleForMelee, HttpError, logo } from './platform.js';
+import { platform, roleForMelee, HttpError, logo, hasAccess } from './platform.js';
 
 const MELEE = 'https://melee.gg';
 const ALLOWED_ORIGINS = [
@@ -51,7 +51,8 @@ function cors(origin) {
   return {
     'Access-Control-Allow-Origin': allowed(origin) ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key, Authorization, X-Overlay-Key',
+    'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   };
 }
@@ -59,7 +60,7 @@ function cors(origin) {
 function json(body, status, origin, maxAge = 30) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': maxAge ? `public, max-age=${maxAge}` : 'no-store', ...cors(origin) },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': maxAge ? `private, max-age=${maxAge}` : 'no-store', ...cors(origin) },
   });
 }
 
@@ -402,6 +403,10 @@ export default {
       const p = await platform(request, env, path, { readBody, allowed, meleeLookup: tournament });
       if (p instanceof Response) return p;
       if (p) return json(p.body, p.status || 200, origin, 0);
+      // Everything below is live data for the stream team and its overlays only (not the public)
+      if (!isAdmin(request, env) && !(await hasAccess(request, env, new URL(request.url)))) {
+        return json({ error: 'Sign in to use the tournament assistant.' }, 401, origin, 0);
+      }
       if (path === '/hri/teams') return json(await hriTeams(), 200, origin, 600);
       const ht = path.match(/^\/hri\/teams\/([a-z0-9-]{1,40})$/i);
       if (ht) return json(await hriTeam(ht[1].toLowerCase()), 200, origin, 300);

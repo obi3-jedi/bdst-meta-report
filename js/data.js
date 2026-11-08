@@ -1,9 +1,18 @@
 // Live tournament data: fetching through the relay, replaying earlier rounds, and everything derived from
 // standings + matches (bracket, top 8 race, matchups, round recap, team, match history).
 
+// Live data is only for the signed-in stream team and its overlays, so every request carries the sign-in
+// (or, in an OBS overlay, the tournament's overlay key)
+function relayAuth() {
+  const h = {};
+  const token = typeof acct !== 'undefined' ? acct.token : '';
+  if (token) h.Authorization = 'Bearer ' + token;
+  if (window.OVERLAY_KEY) h['X-Overlay-Key'] = window.OVERLAY_KEY;
+  return h;
+}
 async function relay(path, opts = {}) {
   let res;
-  try { res = await fetch(RELAY + path, opts); } catch (e) { throw new Error('Could not reach the live feed. Check your connection and try again.'); }
+  try { res = await fetch(RELAY + path, { ...opts, headers: { ...relayAuth(), ...(opts.headers || {}) } }); } catch (e) { throw new Error('Could not reach the live feed. Check your connection and try again.'); }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(body.error || `The live feed answered with an error (${res.status}).`), { status: res.status });
   return body;
@@ -545,9 +554,10 @@ async function saveShow(tid, patch) {
 }
 
 // What's on stream, pushed live from the relay over a WebSocket (reconnects by itself). Returns a stop function.
-function liveFeature(tid, onValue) {
+function liveFeature(tid, onValue, key = window.OVERLAY_KEY) {
   let ws = null, stopped = false, wait = 1000, ping = null;
-  const url = RELAY.replace(/^http/, 'ws') + '/feature/' + tid + '/live';
+  // Browsers can't add headers to a WebSocket, so the tournament's overlay key goes in the address
+  const url = RELAY.replace(/^http/, 'ws') + '/feature/' + tid + '/live' + (key ? '?k=' + encodeURIComponent(key) : '');
   const again = () => { if (!stopped) setTimeout(open, wait = Math.min(wait * 2, 30000)); };
   function open() {
     if (stopped) return;

@@ -11,6 +11,7 @@
   // A tournament's overlay link (&k=<key>) loads its event and the team's saved stream settings,
   // and reloads itself when they change (e.g. someone pastes a new Take 30 link)
   const key = params.get('k');
+  window.OVERLAY_KEY = key || '';   // sent with every request: overlays have no sign-in
   if (key) {
     const root0 = document.getElementById('overlay');
     root0.hidden = false; document.body.classList.add('overlay');

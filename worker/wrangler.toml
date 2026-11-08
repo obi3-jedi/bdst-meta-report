@@ -25,7 +25,8 @@ new_sqlite_classes = ["FeatureMatch"]
 # Discord's client secret is set with: npx wrangler@3.114.0 secret put DISCORD_CLIENT_SECRET --env dev
 [env.dev]
 name = "bdst-melee-relay-dev"
-vars = { DISCORD_CLIENT_ID = "1568803632101728286" }
+# ORGANISERS: Discord user IDs allowed to create tournaments (comma-separated). Everyone else needs an invite.
+vars = { DISCORD_CLIENT_ID = "1568803632101728286", ORGANISERS = "333385275382300674" }
 
 [[env.dev.kv_namespaces]]
 binding = "DATA"
