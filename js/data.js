@@ -86,7 +86,8 @@ function computeView() {
   const prev = atList[atList.length - 2] || null;
   const v = {
     at, round: at?.name || null, current, replay, history, prev,
-    players: at ? (L.standings.get(at.id) || []) : [],
+    // Some events have no standings for their top cut rounds on melee.gg; use the latest round that has them
+    players: [...atList].reverse().map(r => L.standings.get(r.id)).find(ps => ps?.length) || [],
     swiss: lastSwiss && L.standings.get(lastSwiss.id) ? { round: lastSwiss.name, players: L.standings.get(lastSwiss.id) } : null,
     swissTotal: swissRounds.length, swissDone: swissDoneNow.length,
     swissFinished: swissRounds.length > 0 && swissDoneNow.length === swissRounds.length,
