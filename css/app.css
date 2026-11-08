@@ -881,3 +881,6 @@ body.on-hub-page header { align-items: center; }
 .brk-hold-logo { position: absolute; bottom: 0; height: 200px; max-width: 560px; object-fit: contain; }
 .brk-hold-logo.left { left: 0; object-position: left bottom; }
 .brk-hold-logo.right { right: 0; object-position: right bottom; }
+/* Holding cards: larger corner logos. They use the (hidden) footer strip too, and the title/countdown move up a little to make room */
+.brk.hold .brk-hold { padding-bottom: 130px; box-sizing: border-box; }
+.brk-hold-logo { height: 290px; max-width: 640px; bottom: -56px; }
