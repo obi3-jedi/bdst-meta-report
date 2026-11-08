@@ -19,3 +19,27 @@ class_name = "FeatureMatch"
 [[env.staging.migrations]]
 tag = "v1"
 new_sqlite_classes = ["FeatureMatch"]
+
+# Dev relay for the stream platform (accounts, tournaments, stream team invites):
+#   npx wrangler@3.114.0 deploy --env dev
+# Discord's client secret is set with: npx wrangler@3.114.0 secret put DISCORD_CLIENT_SECRET --env dev
+[env.dev]
+name = "bdst-melee-relay-dev"
+vars = { DISCORD_CLIENT_ID = "1568803632101728286" }
+
+[[env.dev.kv_namespaces]]
+binding = "DATA"
+id = "2e216932a64c45b6a53e8821a85fe1af"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "bdst-stream-dev"
+database_id = "c3a34113-e06e-4376-916e-c3f8c221e57d"
+
+[[env.dev.durable_objects.bindings]]
+name = "FEATURE"
+class_name = "FeatureMatch"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["FeatureMatch"]

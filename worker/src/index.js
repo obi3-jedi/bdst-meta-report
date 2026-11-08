@@ -26,14 +26,17 @@
 // The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
 // Workers KV can take up to a minute to update everywhere.
 
+import { platform, roleForMelee, HttpError } from './platform.js';
+
 const MELEE = 'https://melee.gg';
 const ALLOWED_ORIGINS = [
   'https://obi3-jedi.github.io',
   'https://bdst-meta-staging.pages.dev',
+  'https://bdst-stream-dev.pages.dev',
   'http://localhost:8766',
 ];
 // Cloudflare Pages preview deployments live on <hash>.bdst-meta-staging.pages.dev
-const allowed = origin => ALLOWED_ORIGINS.includes(origin) || /^https:\/\/[a-z0-9-]+\.bdst-meta-staging\.pages\.dev$/.test(origin);
+const allowed = origin => ALLOWED_ORIGINS.includes(origin) || /^https:\/\/[a-z0-9-]+\.(bdst-meta-staging|bdst-stream-dev)\.pages\.dev$/.test(origin);
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36',
   'Accept-Language': 'en-AU,en;q=0.9',
@@ -43,8 +46,8 @@ const MAX_BODY = 1_000_000;
 function cors(origin) {
   return {
     'Access-Control-Allow-Origin': allowed(origin) ? origin : ALLOWED_ORIGINS[0],
-    'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key, Authorization',
     'Vary': 'Origin',
   };
 }
@@ -144,6 +147,15 @@ function isAdmin(request, env) {
   return diff === 0;
 }
 
+// Who may change an event's shared data: the organiser passcode, or a signed-in member of a tournament that
+// links this melee.gg event ('stream' = its stream team; 'owner' = whoever created it).
+async function allowedFor(request, env, meleeId, level) {
+  if (isAdmin(request, env)) return true;
+  const role = await roleForMelee(request, env, meleeId);
+  return level === 'stream' ? !!role : role === 'owner';
+}
+const DENIED = 'You don’t have access to change this event. Sign in, or unlock Organiser tools with the passcode.';
+
 async function readBody(request) {
   const text = await request.text();
   if (text.length > MAX_BODY) throw Object.assign(new Error('That is too much data to save.'), { status: 413 });
@@ -166,7 +178,7 @@ async function storage(request, env, path, origin) {
       return v ? json(v, 200, origin, 15) : json({ error: 'No shared decklists for this event yet.' }, 404, origin, 15);
     }
     if (method === 'PUT') {
-      if (!isAdmin(request, env)) return json({ error: 'That organiser passcode is not right.' }, 401, origin, 0);
+      if (!(await allowedFor(request, env, m[1], 'owner'))) return json({ error: DENIED }, 401, origin, 0);
       const body = await readBody(request);
       if (!Array.isArray(body.rows)) return json({ error: 'Expected a list of decklists.' }, 400, origin, 0);
       const value = { tid: Number(m[1]), updated: new Date().toISOString(), rows: body.rows.slice(0, 5000) };
@@ -186,7 +198,7 @@ async function storage(request, env, path, origin) {
       const v = await env.DATA.get(key, 'json');
       return v ? json(v, 200, origin, 60) : json({ error: 'That event is not in the archive.' }, 404, origin, 15);
     }
-    if (!isAdmin(request, env)) return json({ error: 'That organiser passcode is not right.' }, 401, origin, 0);
+    if (!(await allowedFor(request, env, m[1], 'owner'))) return json({ error: DENIED }, 401, origin, 0);
     let index = (await env.DATA.get('archive:index', 'json')) || [];
     index = index.filter(e => String(e.id) !== m[1]);
     if (method === 'PUT') {
@@ -263,7 +275,7 @@ async function feature(request, env, tid, origin) {
   const stub = env.FEATURE.get(env.FEATURE.idFromName(String(tid)));
   if (request.method === 'GET') return json({ tid: Number(tid), ...(await (await stub.fetch('https://do/feature')).json()) }, 200, origin, 0);
   if (request.method === 'PUT') {
-    if (!isAdmin(request, env)) return json({ error: 'That organiser passcode is not right.' }, 401, origin, 0);
+    if (!(await allowedFor(request, env, tid, 'stream'))) return json({ error: DENIED }, 401, origin, 0);
     const body = await readBody(request);
     // On-stream tweaks for the match showing now: { match: "<roundId>|<table>", swap, wins: { <playerId>: n } }.
     // They're kept with the choice and only apply while that match is on screen.
@@ -298,6 +310,9 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors(origin) });
     const path = new URL(request.url).pathname;
     try {
+      const p = await platform(request, env, path, { readBody, allowed, meleeLookup: tournament });
+      if (p instanceof Response) return p;
+      if (p) return json(p.body, p.status || 200, origin, 0);
       if (path === '/hri/teams') return json(await hriTeams(), 200, origin, 600);
       const ht = path.match(/^\/hri\/teams\/([a-z0-9-]{1,40})$/i);
       if (ht) return json(await hriTeam(ht[1].toLowerCase()), 200, origin, 300);

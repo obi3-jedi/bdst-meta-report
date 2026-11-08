@@ -527,3 +527,66 @@ body.overlay #app, body.overlay .modal, body.overlay .toast { display: none !imp
 .fp-games { display: inline-flex; align-items: center; gap: 6px; }
 .fp-games output { min-width: 1.4em; text-align: center; font-weight: 800; font-size: 18px; }
 @media (max-width: 560px) { .fp-show { grid-template-columns: 1fr; } .fp-side:last-child { align-items: flex-start; text-align: left; } }
+
+/* ---------- accounts and tournaments (js/account.js) ---------- */
+.acct { display: flex; align-items: center; }
+.acct-in svg { flex: none; }
+.acct-menu { position: relative; }
+.acct-me { display: inline-flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 14px/1 var(--f-body); cursor: pointer; max-width: 220px; }
+.acct-me span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-me img, .team-list img, .acct-av { width: 30px; height: 30px; border-radius: 50%; flex: none; object-fit: cover; }
+.acct-av { display: inline-grid; place-items: center; background: var(--red); color: #fff; font: 800 14px/1 var(--f-display); }
+.acct-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 200px; display: grid; padding: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, .5); }
+.acct-pop[hidden] { display: none; }
+.acct-pop button { text-align: left; padding: 10px 12px; border: 0; border-radius: 6px; background: none; color: var(--ink); font: 500 14px/1.2 var(--f-body); cursor: pointer; }
+.acct-pop button:hover, .acct-pop button:focus-visible { background: var(--surface); }
+
+.hub { display: block; margin: 18px 0 0; }
+.hub[hidden] { display: none; }
+.hub h2 { margin: 0; font: italic 800 30px/1.05 var(--f-display); text-transform: uppercase; letter-spacing: .01em; }
+.hub h3 { margin: 0 0 8px; font: italic 800 19px/1.1 var(--f-display); text-transform: uppercase; letter-spacing: .03em; }
+.hub p { margin: 8px 0; }
+.hub-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px 16px; border: 1px solid var(--line); border-left: 3px solid var(--red); border-radius: 10px; background: var(--surface); }
+.hub-strip > div:first-child { flex: 1 1 260px; }
+.hub-strip-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 600 13px/1 var(--f-body); cursor: pointer; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip:hover { border-color: var(--ink); }
+.hub-card { padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.hub-title { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.hub-login { max-width: 520px; margin: 24px auto; text-align: center; display: grid; justify-items: center; gap: 4px; }
+.hub-logo { width: 160px; height: auto; margin-bottom: 8px; }
+.hub-empty { padding: 28px 16px; text-align: center; border: 1.5px dashed var(--line); border-radius: 10px; }
+.t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.t-card { display: grid; gap: 6px; text-align: left; padding: 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; font: inherit; }
+.t-card:hover, .t-card:focus-visible { border-color: var(--red); }
+.t-card b { font: italic 800 20px/1.1 var(--f-display); text-transform: uppercase; }
+.t-meta, .ev-meta { color: var(--muted); font-size: 13px; }
+.t-role { justify-self: start; padding: 3px 8px; border-radius: 999px; font: 700 11px/1.2 var(--f-body); letter-spacing: .08em; text-transform: uppercase; background: rgba(255, 255, 255, .08); color: var(--muted); white-space: nowrap; }
+.t-role.owner { background: rgba(255, 20, 24, .16); color: #ff6b6e; }
+.hub-form { display: grid; gap: 14px; max-width: 640px; }
+.fld { display: grid; gap: 6px; min-width: 0; }
+.fld > span { font: 600 13px/1.2 var(--f-body); color: var(--muted); }
+.fld em { font-style: normal; color: var(--red); margin-left: 4px; }
+.fld input, .fld select { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 15px/1.3 var(--f-body); }
+.fld input:focus, .fld select:focus { outline: 2px solid var(--red); outline-offset: 1px; }
+.fld small { color: var(--muted); font-size: 13px; min-height: 1em; }
+.fld-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.hub-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.hint.err, .err { color: #ff6b6e; }
+.ev-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.ev-go { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 14px 0 18px; padding: 12px 14px; border-radius: 10px; background: rgba(255, 20, 24, .08); border: 1px solid rgba(255, 20, 24, .35); }
+.ev-go .hint { flex: 1 1 260px; margin: 0; }
+.ev-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.ev-box { display: block; align-self: start; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); min-width: 0; }
+.copyline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.copyline code { flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 8px 10px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); font: 12px/1.3 var(--f-mono); }
+.copyline.inv small { flex-basis: 100%; color: var(--muted); }
+.team-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.team-list li { display: flex; align-items: center; gap: 10px; }
+.team-list .who { flex: 1; min-width: 0; display: grid; }
+.team-list small { color: var(--muted); font-size: 12px; }
+.danger { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.danger .linkbtn { color: #ff6b6e; }
+/* Signed-in pages that aren't about the followed event hide the event view below */
+body.on-hub-page #live, body.on-hub-page #replay, body.on-hub-page #tabs, body.on-hub-page #panels, body.on-hub-page .foot { display: none; }
+@media (max-width: 560px) { .hub-card { padding: 16px; } .hub h2 { font-size: 24px; } }

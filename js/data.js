@@ -317,7 +317,8 @@ function pairingsFor(roundId) {
 
 // ---------- shared decklists ----------
 const adminKey = () => store(true, 'bdst-admin');
-const adminHeaders = () => ({ 'Content-Type': 'application/json', 'X-Admin-Key': adminKey() });
+// Signed-in users send their session; the organiser passcode still works on its own
+const adminHeaders = () => ({ 'Content-Type': 'application/json', ...(adminKey() ? { 'X-Admin-Key': adminKey() } : {}), ...authHeader() });
 
 async function loadSharedDecks(tid) {
   try {

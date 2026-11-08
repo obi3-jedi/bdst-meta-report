@@ -25,6 +25,7 @@
       <div class="notice" id="notice"></div>
     </div>
     <div class="actions">
+      <div class="acct" id="acct"></div>
       <label class="drop" id="drop" for="file">
         <input type="file" id="file" multiple accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
         <span class="icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg></span>
@@ -36,6 +37,9 @@
       </button>
     </div>
   </header>
+
+  <!-- Sign in, My tournaments, Create tournament, tournament page, invites (js/account.js) -->
+  <section class="hub" id="hub" hidden aria-live="polite"></section>
 
   <!-- Follow live -->
   <section class="sec live" id="live" data-sec="live">
@@ -278,6 +282,7 @@
 <script src="js/core.js"></script>
 <script src="js/data.js"></script>
 <script src="js/images.js"></script>
+<script src="js/account.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/overlay.js"></script>
 </body>

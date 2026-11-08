@@ -1,9 +1,37 @@
 // Stream overlays: ?overlay=standings|feature|bracket|decks&t=<tournament>
 // A transparent page with just the overlay, for an OBS Browser Source. It refreshes itself every minute.
-(function () {
+(async function () {
   const params = new URLSearchParams(location.search);
   const type = params.get('overlay');
   if (!type) return;
+  // A tournament's overlay link (&k=<key>) loads its event and the team's saved stream settings,
+  // and reloads itself when they change (e.g. someone pastes a new Take 30 link)
+  const key = params.get('k');
+  if (key) {
+    const root0 = document.getElementById('overlay');
+    root0.hidden = false; document.body.classList.add('overlay');
+    let info;
+    for (;;) {
+      try { info = await relay('/overlay/' + encodeURIComponent(key)); break; }
+      catch (e) {
+        root0.innerHTML = `<div class="ov-card"><div class="ov-empty">${esc(e.message)}</div></div>`;
+        if (e.status === 404) return;
+        await new Promise(r => setTimeout(r, 15000));
+      }
+    }
+    const st = info.settings || {};
+    params.set('t', info.meleeId);
+    if (st.take30) params.set('t30', st.take30);
+    if (st.take30Swap) params.set('t30swap', '1');
+    if (st.take30Colors === false) params.set('t30colors', '0');
+    if (st.mat) params.set('mat', st.mat);
+    if (st.pos === 'bottom') params.set('pos', 'bottom');
+    const sig = JSON.stringify([info.meleeId, st]);
+    setInterval(async () => {
+      try { const now = await relay('/overlay/' + encodeURIComponent(key)); if (JSON.stringify([now.meleeId, now.settings || {}]) !== sig) location.reload(); }
+      catch (e) { if (e.status === 404) location.reload(); }
+    }, 30000);
+  }
   const tid = parseTournament(params.get('t') || '');
   const n = Math.max(1, Math.min(16, parseInt(params.get('n'), 10) || 8));
   const table = params.get('table') || '1';

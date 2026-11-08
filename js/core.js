@@ -20,6 +20,7 @@ const state = {
 // melee.gg doesn't let other sites read its data from the browser, so live data comes through a small relay (see worker/).
 const RELAY = location.hostname === 'localhost' ? 'http://localhost:8787'
   : /bdst-meta-staging\.pages\.dev$/.test(location.hostname) ? 'https://bdst-melee-relay-staging.bdst.workers.dev'
+  : /bdst-stream-dev\.pages\.dev$/.test(location.hostname) ? 'https://bdst-melee-relay-dev.bdst.workers.dev'
   : 'https://bdst-melee-relay.bdst.workers.dev';
 
 function store(get, k, v) {

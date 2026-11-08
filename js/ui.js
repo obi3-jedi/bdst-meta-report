@@ -196,7 +196,7 @@ function renderPairings() {
   // The stream overlay follows the current round (or the latest one)
   const streamRound = state.liveId && wanted === (v.replay ? v.at?.id : (v.current?.id || v.at?.id));
   const shownOnStream = !state.featureSel?.round || state.featureSel.round === wanted;
-  const org = !!store(true, 'bdst-admin-ok') && !!adminKey();
+  const org = canStream();
   $('pairings-meta').textContent = `${pr.rows.length} ${pr.rows.length === 1 ? 'match' : 'matches'}${pr.round.completed ? '' : ' · playing now'}`;
   const side = (p, other, right, done) => {
     const d = deckOf(p);
@@ -423,7 +423,7 @@ async function renderSeason() {
   const by = state.seasonBy || 'deck';
   // Group every player across events by deck (or leader)
   const rows = new Map();
-  const isAdminNow = !!store(true, 'bdst-admin-ok');
+  const isAdminNow = canOrganise();
   ok.forEach((ev, ei) => {
     genericInfo.clear();
     const known = ev.players.filter(p => p.known);
@@ -470,8 +470,9 @@ function renderStream() {
   ];
   const t30 = take30Url(store(true, 'bdst-t30'));
   const t30extra = t30 ? `&t30=${encodeURIComponent(t30)}${store(true, 'bdst-t30swap') ? '&t30swap=1' : ''}${store(true, 'bdst-t30colors') === 'off' ? '&t30colors=0' : ''}` : '';
-  $('overlays').innerHTML = items.map(it => {
-    const url = `${base}?overlay=${it.type}&t=${tid}${it.extra}${it.type === 'feature' ? t30extra : ''}`;
+  const tour = openTournament();
+  $('overlays').innerHTML = (tour ? `<p class="hint">These links belong to <b>${esc(tour.name)}</b>: they use the team’s saved Take 30 link and overlay settings, so they don’t change when you do.</p>` : '') + items.map(it => {
+    const url = tour ? overlayUrl(it.type, tour) : `${base}?overlay=${it.type}&t=${tid}${it.extra}${it.type === 'feature' ? t30extra : ''}`;
     return `<div class="ovl"><h4>${it.title}</h4><p>${it.desc}</p><code>${esc(url)}</code>
       <div class="row2"><button class="btn ghost sm" type="button" data-copy="${esc(url)}">Copy link</button><a href="${esc(url)}" target="_blank" rel="noopener">Preview ↗</a></div></div>`;
   }).join('');
@@ -558,12 +559,12 @@ function renderRecent() {
 
 // ---------- organiser tools ----------
 function renderOrganiser() {
-  const ok = !!store(true, 'bdst-admin-ok') && !!adminKey();
-  $('admin-state').textContent = ok ? 'Unlocked on this device' : '';
+  const ok = canOrganise();
+  $('admin-state').textContent = passcodeUnlocked() ? 'Unlocked on this device' : ok ? 'Unlocked: you own this tournament' : '';
   $('admin-state').classList.toggle('ok', ok);
   const hasUpload = state.live && state.decks && state.decks.tid === state.live.id && state.decks.source !== 'shared';
   $('share-decks').disabled = !(ok && hasUpload);
-  $('share-decks').title = !ok ? 'Unlock with the organiser passcode first' : !hasUpload ? 'Upload this event’s standings CSV first' : '';
+  $('share-decks').title = !ok ? 'Sign in as the tournament’s owner, or unlock with the organiser passcode' : !hasUpload ? 'Upload this event’s standings CSV first' : '';
   $('save-archive').disabled = !(ok && state.live && state.view?.players?.length);
   $('save-archive').title = !ok ? 'Unlock with the organiser passcode first' : '';
 }
@@ -638,7 +639,7 @@ function renderFeaturePicker() {
   const pr = roundId ? pairingsFor(roundId) : null;
   const rows = (pr?.rows || []).filter(x => x.players.length === 2);
   const sel = state.featureSel || {};
-  const ok = !!store(true, 'bdst-admin-ok') && !!adminKey();
+  const ok = canStream();
   const cur = pr ? pickFeatureMatch(pr.rows, sel) : null;
   const followed = sel.player ? currentPlayers().find(p => p.id === String(sel.player)) : null;
   const now = sel.player
@@ -653,7 +654,7 @@ function renderFeaturePicker() {
       <label class="selectl">or follow <select id="fp-player"><option value="">a player…</option>${players.map(p => `<option value="${esc(p.id)}" ${String(sel.player) === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
     </div><p class="hint">“Table” stays on that table every round. “Follow” shows whichever match that player is in, every round. The overlay switches within a few seconds.</p>
     ${cur && pr ? showControls(pr.round, cur) : ''}`
-    : '<p class="hint">Unlock <b>Organiser tools</b> (in Follow live) to choose the feature match. Until then the overlay shows table 1, or the table in its link.</p>'}`;
+    : '<p class="hint">Sign in and open this event from <b>My tournaments</b> (or unlock <b>Organiser tools</b>) to choose the feature match. Until then the overlay shows table 1, or the table in its link.</p>'}`;
   $('fp-table')?.addEventListener('change', e => { if (e.target.value) setFeature({ table: Number(e.target.value) }); });
   $('fp-player')?.addEventListener('change', e => { if (e.target.value) setFeature({ player: e.target.value }); });
 }
@@ -772,7 +773,7 @@ async function handleFiles(list) {
     if (tid) store(false, 'bdst-decks-' + tid, JSON.stringify(deckRowsFromCSV()));
     if (state.live && tid === state.live.id) {
       setDecks(tid, 'upload', deckRowsFromCSV());
-      toast(store(true, 'bdst-admin-ok') ? 'Decklists added. Share them from Organiser tools so everyone sees decks.' : 'Decklists added for this event.');
+      toast(canOrganise() ? 'Decklists added. Share them from Organiser tools so everyone sees decks.' : 'Decklists added for this event.');
     } else if (!state.live) {
       $('evname').value = store(true, 'swu-ev-' + tid) || '';
       setNotice(`<b>${finalRound().length} players</b> from ${esc(files.length === 1 ? files[0].name : files.length + ' files')}`);
@@ -1026,7 +1027,9 @@ function boot() {
   if (params.get('overlay')) return;            // overlay.js takes over
   const saved = parseTournament(params.get('t') || '') || store(true, 'bdst-live');
   if (store(true, 'bdst-auto')) { $('auto').checked = true; setAuto(true); }
-  if (saved) follow(saved);
+  // A tournament page (?event=) follows its own melee.gg event once it loads
+  if (saved && !params.get('event')) follow(saved);
+  acctBoot();
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const hadController = !!navigator.serviceWorker.controller;
     let reloaded = false;
