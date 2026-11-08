@@ -326,6 +326,10 @@
   const layout = params.get('layout') === 'banner' ? 'banner' : 'sides';
   const cams = params.get('cams') === '1';
   const fullArt = c => c?.h ? c.h.replace(/^art\//, 'art/full/') : null;
+  window.cardFallback = imgEl => {
+    if (imgEl.dataset.normal && imgEl.getAttribute('src') !== imgEl.dataset.normal) { imgEl.src = imgEl.dataset.normal; return; }
+    imgEl.replaceWith(Object.assign(document.createElement('div'), { className: 'fs-ph', textContent: imgEl.dataset.name || '' }));
+  };
   const logoImg = (slot, cls) => params.get('logo_' + slot) ? `<img class="${cls}" src="${esc(params.get('logo_' + slot))}" alt="">` : '';
   // The base damage plate takes the base's colour (its aspect): blue, green, red, yellow, or grey with none
   const baseTone = bc => {
@@ -339,8 +343,9 @@
       const d = deckOf(p);
       const lc = d ? card('leaders', d.leader) : null, bc = d ? card('bases', d.rawBase) : null;
       const total = bc?.hp ?? '';
+      // Showcase leaders and Hyperspace bases (art/variant), falling back to the normal card, then the name
       const img = (c, label, fallback) => `<figure class="fs-card"><figcaption>${label}</figcaption>${fullArt(c)
-        ? `<img src="${esc(fullArt(c))}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'fs-ph',textContent:${esc(JSON.stringify(fallback))}}))">`
+        ? `<img src="${esc(fullArt(c).replace(/^art\/full\//, 'art/variant/'))}" data-normal="${esc(fullArt(c))}" data-name="${esc(fallback)}" alt="" onerror="cardFallback(this)">`
         : `<div class="fs-ph">${esc(fallback)}</div>`}</figure>`;
       const pips = Array.from({ length: need }, (_, i) => `<i class="${i < gameWinsOf(p, show) ? 'on' : ''}"></i>`).join('');
       // Both logos sit at the bottom of the right panel; the left keeps the same space so the base boxes line up
