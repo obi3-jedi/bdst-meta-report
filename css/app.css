@@ -810,3 +810,21 @@ body.on-hub-page header { align-items: center; }
 .fs-col.with-logo .fs-card img { max-height: calc(262 * var(--u)); }
 .fs.cams .fs-col.with-logo .fs-card img { max-height: calc(160 * var(--u)); }
 .fs-ph { flex: none; width: 100%; aspect-ratio: 520 / 372; max-height: calc(262 * var(--u)); box-sizing: border-box; }
+
+/* Base damage plate in the base's colour */
+.fs-hp { --bc: #4a4a52; --ink-on: #fff; margin: 0 calc(-6 * var(--u)); padding: calc(12 * var(--u)) 0 calc(10 * var(--u)); border-top: 0; border-radius: calc(12 * var(--u));
+  background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(0, 0, 0, .38)), var(--bc);
+  box-shadow: 0 0 calc(24 * var(--u)) var(--bc), inset 0 0 0 calc(2 * var(--u)) rgba(255, 255, 255, .18); color: var(--ink-on); }
+.fs-hp.tone-vigilance { --bc: #3f7fd6; }
+.fs-hp.tone-command { --bc: #2f9a4f; }
+.fs-hp.tone-aggression { --bc: #d8452a; }
+.fs-hp.tone-cunning { --bc: #e6b93a; --ink-on: #1a1206; }
+.fs-hp .fm-dmg b, .fs-hp .fm-dmg small, .fs-hp .fs-hp-l { color: var(--ink-on); }
+.fs-hp .fm-dmg small, .fs-hp .fs-hp-l { opacity: .78; }
+.fs-hp .fm-dmg b { text-shadow: 0 calc(3 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, .35); }
+.fs-hp.tone-cunning .fm-dmg b { text-shadow: none; }
+/* Close to defeat: the plate pulses instead of turning the numbers red (they'd vanish on a red base) */
+.fs-hp.low .fm-dmg b, .fs-hp.low .fm-dmg small { color: var(--ink-on); }
+.fs-hp.low { animation: fs-low 1.2s ease-in-out infinite; }
+@keyframes fs-low { 50% { box-shadow: 0 0 calc(44 * var(--u)) var(--bc), inset 0 0 0 calc(5 * var(--u)) #fff; } }
+@media (prefers-reduced-motion: reduce) { .fs-hp.low { animation: none; box-shadow: inset 0 0 0 calc(5 * var(--u)) #fff; } }

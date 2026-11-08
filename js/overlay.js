@@ -326,6 +326,11 @@
   const cams = params.get('cams') === '1';
   const fullArt = c => c?.h ? c.h.replace(/^art\//, 'art/full/') : null;
   const logoImg = (slot, cls) => params.get('logo_' + slot) ? `<img class="${cls}" src="${esc(params.get('logo_' + slot))}" alt="">` : '';
+  // The base damage plate takes the base's colour (its aspect): blue, green, red, yellow, or grey with none
+  const baseTone = bc => {
+    const a = (bc?.a || []).find(x => ['Vigilance', 'Command', 'Aggression', 'Cunning'].includes(x));
+    return a ? 'tone-' + a.toLowerCase() : 'tone-none';
+  };
   function featureSides(round, m, show) {
     const need = 2;   // best of 3
     const { L, R } = G;
@@ -343,7 +348,7 @@
           <div class="fs-line"><span>${p.standing ? `#${p.standing.rank} · ${esc(p.standing.record)}` : ''}</span><span class="fm-pips" title="Games won">${pips}</span></div></div>
         ${cams ? '<div class="fs-cam" aria-hidden="true"></div>' : ''}
         <div class="fs-cards">${img(lc, 'Leader', d ? d.leader : 'Leader')}${img(bc, 'Base', d ? d.rawBase : 'Base')}</div>
-        <div class="fm-hp fs-hp" data-side="${right ? 1 : 0}" data-printed="${total}"><span class="fm-dmg"><b>0</b><small>/${total || '–'}</small></span><span class="fs-hp-l">Base damage</span></div>
+        <div class="fm-hp fs-hp ${baseTone(bc)}" data-side="${right ? 1 : 0}" data-printed="${total}"><span class="fm-dmg"><b>0</b><small>/${total || '–'}</small></span><span class="fs-hp-l">Base damage</span></div>
         ${lg ? `<div class="fs-logo-row">${lg}</div>` : ''}
       </div>`;
     };
