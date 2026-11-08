@@ -277,19 +277,41 @@ const sceneLabel = sc => SCENES.flatMap(g => g.items).find(i => i.key === sceneK
 function liveControlHtml(t) {
   const prog = overlayUrl('program', t);
   const showPrev = store(true, 'bdst-lc-preview') !== 'off';
-  return `<section class="ev-box live-ctl" aria-labelledby="lc-title">
-    <div class="lc-head"><h3 id="lc-title">Live control</h3><span class="lc-onair" id="lc-onair" aria-live="polite"></span>
-      <span class="lc-conn" id="lc-conn" title="Connection to the stream">Connecting…</span></div>
+  return foldBox('lc', 'Live control', `
     <div class="lc-main ${showPrev ? '' : 'no-prev'}">
       ${showPrev ? `<div class="lc-prev"><div class="lc-slot" id="lc-slot"></div><span class="lc-cam" aria-hidden="true">camera</span></div>` : ''}
       <div class="lc-groups">${SCENES.map(g => `<div class="lc-group"><h4>${g.group}</h4><div class="lc-btns">${g.items.map(i =>
         `<button type="button" class="lc-btn" data-scene="${esc(i.key)}" aria-pressed="false">${esc(i.label)}${i.hint ? `<small>${esc(i.hint)}</small>` : ''}</button>`).join('')}
-        ${g.group === 'Holding card' ? `<label class="lc-timer">Countdown <select id="lc-mins"><option value="0">No timer</option>${[2, 5, 10, 15, 20, 30].map(n => `<option value="${n}" ${n === 10 ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>` : ''}</div></div>`).join('')}</div>
+        ${g.group === 'Holding card' ? `<label class="lc-timer">Countdown <select id="lc-mins"><option value="0">No timer</option>${[2, 5, 10, 15, 20, 30].map(n => `<option value="${n}" ${n === 10 ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>` : ''}</div></div>`).join('')}
+        <p class="hint lc-more">Pick the feature match, swap sides, set games won and run Take 30 in the <button class="linkbtn" type="button" data-acct="controls">Stream tab ↓</button></p></div>
     </div>
     <div class="copyline"><code>${esc(prog.replace(/k=[a-f0-9]+/, 'k=••••••'))}</code><button class="btn ghost sm" type="button" data-copy="${esc(prog)}">Copy OBS link</button></div>
-    <p class="hint">Put this <b>one link</b> in OBS as a Browser Source (1920 × 1080) above your camera, then run everything from here. Anyone on the stream team can switch scenes from any browser; the stream changes within a second.
-      <button class="linkbtn" type="button" data-acct="toggle-preview">${showPrev ? 'Hide preview' : 'Show preview'}</button></p>
-  </section>`;
+    <p class="hint">The <b>only link OBS needs</b>: add it as a Browser Source (1920 × 1080) above your camera. Anyone on the stream team can switch scenes from any browser; the stream changes within a second. Keep it private.
+      <button class="linkbtn" type="button" data-acct="toggle-preview">${showPrev ? 'Hide preview' : 'Show preview'}</button></p>`,
+    { cls: 'live-ctl', head: `<span class="lc-onair" id="lc-onair" aria-live="polite"></span><span class="lc-conn" id="lc-conn" title="Connection to the stream">Connecting…</span>` });
+}
+// A box with a minimise arrow; open or closed is remembered in this browser
+const foldOpen = (key, closed) => { const v = store(true, 'bdst-fold-' + key); return v ? v === 'open' : !closed; };
+function foldBox(key, title, body, { closed = false, cls = '', head = '', meta = '' } = {}) {
+  const open = foldOpen(key, closed);
+  return `<section class="ev-box fold ${cls} ${open ? '' : 'folded'}" data-fold="${key}">
+    <div class="fold-top"><button class="fold-h" type="button" data-fold-toggle aria-expanded="${open}"><i class="fold-chev" aria-hidden="true"></i><h3>${title}</h3>${meta ? `<small>${esc(meta)}</small>` : ''}</button>${head}</div>
+    <div class="fold-b">${body}</div></section>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-fold-toggle]'); if (!b) return;
+  const box = b.closest('[data-fold]'); const open = box.classList.toggle('folded') === false;
+  b.setAttribute('aria-expanded', String(open));
+  store(false, 'bdst-fold-' + box.dataset.fold, open ? 'open' : 'closed');
+  if (open) fitPreview();
+});
+// Static boxes (the Stream tab): set them open or closed as remembered
+function applyFolds(root = document) {
+  root.querySelectorAll('[data-fold]').forEach(box => {
+    const open = foldOpen(box.dataset.fold, box.dataset.foldClosed === '1');
+    box.classList.toggle('folded', !open);
+    box.querySelector('[data-fold-toggle]')?.setAttribute('aria-expanded', String(open));
+  });
 }
 function fitPreview() {
   const slot = $('lc-slot'), f = $('lc-frame'); if (!slot || !f) return;
@@ -347,7 +369,6 @@ function drawEvent(el = $('hub')) {
   if (keepFrame) keepFrame.remove();
   const owner = t.role === 'owner';
   const s = t.settings || {};
-  const feature = overlayUrl('feature', t);
   const inviteBase = location.origin + location.pathname + '?invite=';
   const invites = acct.invites;
   el.innerHTML = `<div class="hub-card ev">
@@ -355,35 +376,24 @@ function drawEvent(el = $('hub')) {
     <div class="ev-head"><div><h2>${esc(t.name)}</h2>
       <p class="ev-meta">${esc([fmtDate(t.date), t.venue, `Best of ${t.bestOf}`, t.topCut ? `Top ${t.topCut}` : 'No cut'].filter(Boolean).join(' · '))} · <a href="https://melee.gg/Tournament/View/${t.meleeId}" target="_blank" rel="noopener">melee.gg ↗</a></p></div>
       <span class="t-role ${t.role}">${owner ? 'You own this' : 'Stream team'}</span></div>
-    <div class="ev-go"><button class="btn" type="button" data-acct="controls">Open stream controls</button>
-      <span class="hint">Pick the feature match, swap sides, set games won and run Take 30 from the <b>Stream</b> tab below.</span></div>
 
     ${liveControlHtml(t)}
 
     <div class="ev-grid">
-      <section class="ev-box">
-        <h3>OBS overlay</h3>
-        <p>Add as a <b>Browser Source</b>, 1920 × 1080. This link stays the same for the whole event and picks up the team’s Take 30 link by itself.</p>
-        <div class="copyline"><code>${esc(feature.replace(/k=[a-f0-9]+/, 'k=••••••'))}</code><button class="btn ghost sm" type="button" data-copy="${esc(feature)}">Copy link</button></div>
+      ${foldBox('ovs', 'Overlay settings', `
+        <h4 class="ev-sub">Feature match banner</h4>
         <div class="fld-row">
           <label class="fld"><span>Mat size on screen (px)</span><input id="ev-mat" type="number" min="600" max="1500" step="10" value="${esc(s.mat || 1080)}"></label>
           <div class="fld"><span>Banner</span><div class="seg" role="group" aria-label="Banner position" id="ev-pos">
             <button type="button" data-v="top" aria-pressed="${s.pos !== 'bottom'}">Top</button><button type="button" data-v="bottom" aria-pressed="${s.pos === 'bottom'}">Bottom</button></div></div>
         </div>
-        <p class="hint">Changes reach OBS within 30 seconds. Keep this link private: anyone with it can show your overlay.${owner ? ' <button class="linkbtn" type="button" data-acct="rekey">Make a new link</button> (the old one stops working).' : ''}</p>
-      </section>
-
-      <section class="ev-box">
-        <h3>Break screen</h3>
-        <p>A full-screen <b>Browser Source</b> (1920 × 1080) for breaks between rounds. It cycles through the slides below and skips any with nothing to show yet.</p>
-        <div class="copyline"><code>${esc(overlayUrl('break', t).replace(/k=[a-f0-9]+/, 'k=••••••'))}</code><button class="btn ghost sm" type="button" data-copy="${esc(overlayUrl('break', t))}">Copy link</button></div>
+        <h4 class="ev-sub">Break screen slides</h4>
+        <p class="hint">The break screen cycles through these, skipping any with nothing to show yet.</p>
         <div class="brk-pick" id="ev-slides">${BREAK_SLIDE_INFO.map(([id, label, hint]) => `<label class="switch"><input type="checkbox" value="${id}" ${breakSlidesOf(s).includes(id) ? 'checked' : ''}><span class="track-sw" aria-hidden="true"></span><span>${label}<small>${hint}</small></span></label>`).join('')}</div>
         <label class="fld sec-fld"><span>Seconds per slide</span><input id="ev-sec" type="number" min="5" max="120" step="1" value="${esc(s.breakSeconds || 15)}"></label>
-        <p class="hint"><a href="${esc(overlayUrl('break', t))}" target="_blank" rel="noopener">Preview ↗</a></p>
-      </section>
+        <p class="hint">Saved for the whole team; OBS picks changes up within 30 seconds.${owner ? ' <button class="linkbtn" type="button" data-acct="rekey">Make a new OBS link</button> if the current one has leaked (the old one stops working).' : ''}</p>`)}
 
-      <section class="ev-box">
-        <h3>Stream team</h3>
+      ${foldBox('team', 'Stream team', `
         <ul class="team-list">${(t.team || []).map(u => `<li>${u.avatar ? `<img src="${esc(u.avatar)}" alt="">` : `<span class="acct-av">${esc(u.name.slice(0, 1).toUpperCase())}</span>`}
           <span class="who"><b>${esc(u.name)}</b><small>${u.role === 'owner' ? 'Owner' : 'Stream team'}${u.id === acct.user.id ? ' · you' : ''}</small></span>
           ${u.role !== 'owner' && (owner || u.id === acct.user.id) ? `<button class="linkbtn" type="button" data-remove="${esc(u.id)}" data-name="${esc(u.name)}">${u.id === acct.user.id ? 'Leave' : 'Remove'}</button>` : ''}</li>`).join('')}</ul>
@@ -394,11 +404,9 @@ function drawEvent(el = $('hub')) {
             <button class="btn ghost sm" type="button" data-copy="${esc(inviteBase + i.code)}">Copy</button>
             <button class="linkbtn" type="button" data-cancel-invite="${esc(i.code)}">Cancel</button>
             <small>${i.uses} joined · expires ${esc(new Date(i.expires).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }))}</small></div>`).join('') : ''}
-        </div>` : ''}
-      </section>
+        </div>` : ''}`, { meta: `${(t.team || []).length}` })}
 
-      ${owner ? `<section class="ev-box">
-        <h3>Event details</h3>
+      ${owner ? foldBox('details', 'Event details', `
         <form id="ev-edit" class="hub-form" novalidate>
           <label class="fld"><span>Name</span><input id="ee-name" maxlength="80" value="${esc(t.name)}"></label>
           <div class="fld-row"><label class="fld"><span>Date</span><input id="ee-date" type="date" value="${esc(t.date || '')}"></label>
@@ -409,8 +417,7 @@ function drawEvent(el = $('hub')) {
           <div class="hub-actions"><button class="btn ghost sm" type="submit">Save changes</button><span class="hint" id="ee-msg" aria-live="polite"></span></div>
         </form>
         <p class="hint">Decklists: upload the event’s standings CSV (top of the page), then <b>Share decklists</b> in Organiser tools so the overlay and your team see decks.</p>
-        <p class="danger"><button class="linkbtn" type="button" data-acct="delete">Delete tournament</button></p>
-      </section>` : ''}
+        <p class="danger"><button class="linkbtn" type="button" data-acct="delete">Delete tournament</button></p>`, { closed: true }) : ''}
     </div></div>`;
 
   // Live control: put the preview back (or start it), and listen for scene changes from the rest of the team
@@ -593,6 +600,7 @@ document.addEventListener('click', async e => {
 // ---------- start ----------
 async function acctBoot() {
   acctWire();
+  applyFolds($('p-stream'));
   if (loginReturn?.error) toast(loginReturn.error);
   if (loginReturn?.code) {
     try {

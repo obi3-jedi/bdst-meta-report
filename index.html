@@ -213,15 +213,15 @@
     <div role="tabpanel" id="p-stream" aria-labelledby="t-stream" class="panel" hidden>
       <div class="needs-live" data-msg="Follow a live tournament to get overlay links for OBS."></div>
       <section class="sec live-only" data-sec="stream">
-        <div class="sec-head"><span class="sec-title">Stream overlays</span></div>
-        <p class="hint">Add these as a <b>Browser Source</b> in OBS (or any streaming app). They have a transparent background and update themselves every minute.</p>
-        <div class="ovl t30">
-          <h4>Feature match on stream</h4>
-          <div id="feature-picker"></div>
+        <div class="sec-head"><span class="sec-title">Stream</span></div>
+        <div class="ovl t30 fold" data-fold="st-feature">
+          <button class="fold-h" type="button" data-fold-toggle aria-expanded="true"><i class="fold-chev" aria-hidden="true"></i><h4>Feature match on stream</h4></button>
+          <div class="fold-b"><div id="feature-picker"></div></div>
         </div>
-        <div class="ovl t30">
-          <h4>Take 30 base counters</h4>
-          <p>Paste the link the Take 30 app broadcasts. The feature match overlay then shows each player’s base health live as it changes in the app. The link is saved in this browser and added to the feature match link below.</p>
+        <div class="ovl t30 fold" data-fold="st-t30">
+          <button class="fold-h" type="button" data-fold-toggle aria-expanded="true"><i class="fold-chev" aria-hidden="true"></i><h4>Take 30 base counters</h4></button>
+          <div class="fold-b">
+          <p>Paste the link the Take 30 app broadcasts. The feature match banner then shows each player’s base damage live as it changes in the app.</p>
           <div class="row2"><input id="t30-link" type="url" inputmode="url" placeholder="https://…firebaseio.com/….json" autocomplete="off" aria-label="Take 30 link"><button class="btn ghost sm" id="t30-test" type="button">Test link</button></div>
           <label class="switch"><input type="checkbox" id="t30-swap"><span class="track-sw" aria-hidden="true"></span>Take 30’s player 1 is the right-hand player on the banner</label>
           <label class="switch"><input type="checkbox" id="t30-colors" checked><span class="track-sw" aria-hidden="true"></span>Send base colours and starting health to Take 30 (needs god mode)</label>
@@ -229,8 +229,15 @@
             <button class="btn ghost sm" id="t30-reset" type="button">Reset game</button>
             <span class="hint" id="t30-send-msg" aria-live="polite"></span></div>
           <div class="t30-result" id="t30-result" aria-live="polite"></div>
+          </div>
         </div>
-        <div class="overlays" id="overlays"></div>
+        <div class="ovl fold" id="ovl-links" data-fold="st-links">
+          <button class="fold-h" type="button" data-fold-toggle aria-expanded="true"><i class="fold-chev" aria-hidden="true"></i><h4 id="ovl-links-title">Overlay links for OBS</h4></button>
+          <div class="fold-b">
+            <p class="hint" id="ovl-links-hint">Add these as a <b>Browser Source</b> in OBS. They have a transparent background and update themselves.</p>
+            <div class="overlays" id="overlays"></div>
+          </div>
+        </div>
       </section>
     </div>
   </main>

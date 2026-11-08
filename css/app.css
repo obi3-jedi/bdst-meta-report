@@ -574,8 +574,6 @@ body.overlay #app, body.overlay .modal, body.overlay .toast { display: none !imp
 .hub-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .hint.err, .err { color: #ff6b6e; }
 .ev-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
-.ev-go { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 14px 0 18px; padding: 12px 14px; border-radius: 10px; background: rgba(255, 20, 24, .08); border: 1px solid rgba(255, 20, 24, .35); }
-.ev-go .hint { flex: 1 1 260px; margin: 0; }
 .ev-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .ev-box { display: block; align-self: start; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); min-width: 0; }
 .copyline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
@@ -696,8 +694,6 @@ body.on-hub-page header { align-items: center; }
 
 /* Live control (tournament page) */
 .live-ctl { margin-bottom: 14px; border-color: rgba(255, 20, 24, .45); }
-.lc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
-.lc-head h3 { margin: 0; }
 .lc-onair { display: inline-flex; align-items: center; gap: 8px; font: 600 14px var(--f-body); color: var(--muted); }
 .lc-onair b { color: var(--ink); }
 .lc-onair i { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 0 rgba(255, 20, 24, .7); animation: lc-pulse 1.6s infinite; }
@@ -723,3 +719,22 @@ body.on-hub-page header { align-items: center; }
 .lc-timer select { padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 @media (max-width: 760px) { .lc-main { grid-template-columns: 1fr; } }
 .brk-hold, .brk-empty { grid-row: 1 / -1; align-self: stretch; }
+
+/* Minimise arrows on the tournament page and Stream tab boxes */
+.fold-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.fold-h { display: inline-flex; align-items: center; gap: 10px; padding: 2px 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.fold-h h3, .fold-h h4 { margin: 0; }
+.fold-h small { font: 600 12px var(--f-body); color: var(--muted); padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, .06); }
+.fold-h:hover .fold-chev, .fold-h:focus-visible .fold-chev { border-color: var(--ink); }
+.fold-chev { width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s; flex: none; }
+.folded .fold-chev { transform: rotate(-45deg); }
+.fold-b { margin-top: 12px; }
+.fold.folded > .fold-b { display: none; }
+.ev-box.fold, .ovl.fold { align-self: start; }
+.live-ctl .fold-top { margin-bottom: 0; }
+.ev-sub { margin: 14px 0 6px; font: 700 11px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ev-sub:first-child { margin-top: 0; }
+.lc-more { margin: 4px 0 0; }
+.ev-head { margin-bottom: 16px; }
+.ovl > .fold-b { display: grid; gap: 8px; margin-top: 4px; }
+.ovl > .fold-b > .overlays { margin-top: 4px; }

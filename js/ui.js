@@ -473,7 +473,14 @@ function renderStream() {
   const t30 = take30Url(store(true, 'bdst-t30'));
   const t30extra = t30 ? `&t30=${encodeURIComponent(t30)}${store(true, 'bdst-t30swap') ? '&t30swap=1' : ''}${store(true, 'bdst-t30colors') === 'off' ? '&t30colors=0' : ''}` : '';
   const tour = openTournament();
-  $('overlays').innerHTML = (tour ? `<p class="hint">These links belong to <b>${esc(tour.name)}</b>: they use the team’s saved Take 30 link and overlay settings, so they don’t change when you do.</p>` : '') + items.map(it => {
+  // With a saved tournament, the program link in Live control covers everything; the separate links are optional extras
+  $('ovl-links-title').textContent = tour ? 'Separate overlay links (optional)' : 'Overlay links for OBS';
+  $('ovl-links-hint').innerHTML = tour
+    ? `You only need the <b>program link</b> from Live control at the top. These single-purpose links are here if you’d rather build your own OBS scenes.`
+    : 'Add these as a <b>Browser Source</b> in OBS. They have a transparent background and update themselves.';
+  const box = $('ovl-links');
+  if (tour && !store(true, 'bdst-fold-st-links')) { box.classList.add('folded'); box.querySelector('[data-fold-toggle]').setAttribute('aria-expanded', 'false'); }
+  $('overlays').innerHTML = items.filter(it => tour || it.type !== 'program').map(it => {
     const url = tour ? overlayUrl(it.type, tour) : `${base}?overlay=${it.type}&t=${tid}${it.extra}${it.type === 'feature' ? t30extra : ''}`;
     return `<div class="ovl"><h4>${it.title}</h4><p>${it.desc}</p><code>${esc(url)}</code>
       <div class="row2"><button class="btn ghost sm" type="button" data-copy="${esc(url)}">Copy link</button><a href="${esc(url)}" target="_blank" rel="noopener">Preview ↗</a></div></div>`;
