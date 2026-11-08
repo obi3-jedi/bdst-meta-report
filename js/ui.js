@@ -678,10 +678,15 @@ function renderFeaturePicker() {
   $('fp-player')?.addEventListener('change', e => { if (e.target.value) setFeature({ player: e.target.value }); });
 }
 // ---------- Decks tab: leaders and bases picked by hand (Limited, or anyone without a decklist) ----------
-const cardNames = kind => Object.values(window.SWU_CARDS?.[kind] || {}).map(c => c.n).sort((a, b) => a.localeCompare(b));
+// In a Limited event only the event's set is legal, so only its leaders and bases are offered
+const limitedSet = () => { const t = openTournament(); return t?.settings?.format === 'limited' ? t.settings.cardSet || null : null; };
+const setName = code => window.SWU_CARDS?.sets?.[code]?.n || code;
+const cardNames = kind => { const set = limitedSet(); return Object.values(window.SWU_CARDS?.[kind] || {}).filter(c => !set || (c.s || []).includes(set)).map(c => c.n).sort((a, b) => a.localeCompare(b)); };
+let datalistSet;
 function ensureDatalists() {
-  if ($('dl-leaders')) return;
-  const mk = (id, names) => { const d = document.createElement('datalist'); d.id = id; d.innerHTML = names.map(n => `<option value="${esc(n)}"></option>`).join(''); document.body.appendChild(d); };
+  if ($('dl-leaders') && datalistSet === limitedSet()) return;
+  datalistSet = limitedSet();
+  const mk = (id, names) => { let d = $(id); if (!d) { d = document.createElement('datalist'); d.id = id; document.body.appendChild(d); } d.innerHTML = names.map(n => `<option value="${esc(n)}"></option>`).join(''); };
   mk('dl-leaders', cardNames('leaders')); mk('dl-bases', cardNames('bases'));
 }
 // The card's proper name for whatever was typed (any case), or null if it isn't a leader/base we know
@@ -704,7 +709,8 @@ function decksTab(cur, pr, ok, limited) {
   const picks = Object.entries(state.featureSel?.picks || {});
   const players = currentPlayers().filter(p => !isDropped(p)).sort((a, b) => a.name.localeCompare(b.name));
   const other = state.fpOther && !inMatch.some(p => p.id === state.fpOther) ? players.find(p => p.id === state.fpOther) : null;
-  return `<p class="hint">${limited ? '<b>Limited:</b> there are no decklists, so pick' : 'Pick'} each player’s leader and base here. Picks are saved for the whole event and used everywhere: the feature match, break screen and deck breakdown. A pick replaces that player’s decklist.</p>
+  const set = limitedSet();
+  return `<p class="hint">${limited ? `<b>Limited${set ? ` · ${esc(setName(set))}` : ''}:</b> there are no decklists, so pick` : 'Pick'} each player’s leader and base here.${limited && set ? ` Only ${esc(setName(set))} leaders and bases are listed.` : limited ? ' <b>Choose the set in Event details</b> to list only its leaders and bases.' : ''} Picks are saved for the whole event and used everywhere: the feature match, break screen and deck breakdown. A pick replaces that player’s decklist.</p>
     ${inMatch.length ? `<h4 class="ev-sub">On the feature table${pr ? ` · ${esc(pr.round.name)}` : ''}</h4>${inMatch.map(deckRow).join('')}` : '<p class="hint">No feature match yet. Pick one on the Match tab, or choose a player below.</p>'}
     <h4 class="ev-sub">Another player</h4>
     <label class="selectl"><select id="dk-other"><option value="">Choose a player…</option>${players.map(p => `<option value="${esc(p.id)}" ${other?.id === p.id ? 'selected' : ''}>${esc(p.name)}${deckOf(p) ? '' : ' (no deck)'}</option>`).join('')}</select></label>
@@ -718,8 +724,9 @@ async function saveDeckRow(row, clear) {
   if (clear) pick = { player: pid, clear: true };
   else {
     const leader = exactCard('leaders', row.querySelector('[data-dk="leader"]').value), base = exactCard('bases', row.querySelector('[data-dk="base"]').value);
-    if (!leader) { toast('Pick a leader from the list (start typing its name).'); row.querySelector('[data-dk="leader"]').focus(); return; }
-    if (!base) { toast('Pick a base from the list (start typing its name).'); row.querySelector('[data-dk="base"]').focus(); return; }
+    const inSet = limitedSet() ? ` from ${setName(limitedSet())}` : '';
+    if (!leader) { toast(`Pick a leader${inSet} from the list (start typing its name).`); row.querySelector('[data-dk="leader"]').focus(); return; }
+    if (!base) { toast(`Pick a base${inSet} from the list (start typing its name).`); row.querySelector('[data-dk="base"]').focus(); return; }
     pick = { player: pid, name, leader, base };
   }
   try {
