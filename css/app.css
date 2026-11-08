@@ -832,3 +832,4 @@ body.on-hub-page header { align-items: center; }
 .fs-logo-row .fs-logo { max-width: calc(50% - 9 * var(--u)); }
 .fs-col.left .fs-logo-row { border-top-color: rgba(255, 255, 255, .12); }
 .fs-plate .fs-clock { padding-left: 0; border-left: 0; font-size: calc(32 * var(--u)); }
+.fs-clock.idle { opacity: .6; }

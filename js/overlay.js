@@ -35,6 +35,7 @@
     if (st.pos === 'bottom') params.set('pos', 'bottom');
     if (st.layout === 'banner' && !params.get('layout')) params.set('layout', 'banner');
     if (st.cams && !params.get('cams')) params.set('cams', '1');
+    if (st.roundMins) params.set('roundmins', st.roundMins);
     for (const slot of ['store', 'creator']) if (st.logos?.[slot]) params.set('logo_' + slot, `${RELAY}/logo/${info.id}/${slot}?v=${st.logos[slot]}`);
     const sig = JSON.stringify([info.meleeId, st]);
     setInterval(async () => {
@@ -368,9 +369,11 @@
   function tickClock() {
     const el = root.querySelector('.fs-clock'); if (!el) return;
     const c = roundClock(featureSel);
-    el.hidden = !c;
-    const tbl = root.querySelector('.fs-table'); if (tbl) tbl.hidden = !!c;   // the timer takes the table number's place
-    if (!c) return;
+    // The timer always takes the table number's place; before a clock starts it shows the full round length
+    el.hidden = false;
+    const tbl = root.querySelector('.fs-table'); if (tbl) tbl.hidden = true;
+    el.classList.toggle('idle', !c);
+    if (!c) { el.textContent = `${Math.max(10, Math.min(240, parseInt(params.get('roundmins'), 10) || 50))}:00`; el.classList.remove('low', 'over'); return; }
     const left = Math.round((c.endsAt - Date.now()) / 1000);
     el.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Time';
     el.classList.toggle('over', left <= 0);

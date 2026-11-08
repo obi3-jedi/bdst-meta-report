@@ -285,7 +285,7 @@ function liveControlHtml(t) {
         `<button type="button" class="lc-btn" data-scene="${esc(i.key)}" aria-pressed="false">${esc(i.label)}${i.hint ? `<small>${esc(i.hint)}</small>` : ''}</button>`).join('')}
         ${g.group === 'Holding card' ? `<label class="lc-timer">Countdown <select id="lc-mins"><option value="0">No timer</option>${[2, 5, 10, 15, 20, 30].map(n => `<option value="${n}" ${n === 10 ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>` : ''}</div></div>`).join('')}
         <div class="lc-group"><h4>Round clock <span class="lc-clock" id="lc-clock"></span></h4><div class="lc-btns">
-          <label class="lc-timer"><select id="lc-clock-mins" aria-label="Round length">${[30, 40, 45, 50, 55, 60, 75, 90].map(n => `<option value="${n}" ${n === 50 ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>
+          <label class="lc-timer">Round length <select id="lc-clock-mins" aria-label="Round length">${[30, 40, 45, 50, 55, 60, 75, 90].map(n => `<option value="${n}" ${n === (t.settings?.roundMins || 50) ? 'selected' : ''}>${n} min</option>`).join('')}</select></label>
           <button type="button" class="lc-btn sm" data-clock="start">Start</button>
           <button type="button" class="lc-btn sm" data-clock="-1" aria-label="One minute less">−1 min</button>
           <button type="button" class="lc-btn sm" data-clock="1" aria-label="One minute more">+1 min</button>
@@ -366,12 +366,13 @@ function markReplay() {
 function markClock() {
   const el = $('lc-clock'); if (!el) return;
   const c = String(state.liveId) === String(acct.current?.meleeId) ? roundClock(acct.live?.value) : (acct.live?.value?.clock?.endsAt ? { ...acct.live.value.clock, source: 'manual' } : null);
-  if (!c) { el.textContent = 'off · shows the table number'; el.className = 'lc-clock'; return; }
+  if (!c) { el.textContent = `not started · showing ${acct.current?.settings?.roundMins || 50}:00`; el.className = 'lc-clock'; return; }
   const left = Math.round((c.endsAt - Date.now()) / 1000);
   el.textContent = (left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} left` : 'Time') + (c.source === 'melee' ? ' · from melee.gg' : '');
   el.className = 'lc-clock on' + (left <= 0 ? ' over' : '');
 }
 setInterval(markClock, 1000);
+document.addEventListener('change', e => { if (e.target.id === 'lc-clock-mins') { saveSettings({ roundMins: Number(e.target.value) }); markClock(); } });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-clock]'); if (!b || !acct.current) return;
   const k = b.dataset.clock;
