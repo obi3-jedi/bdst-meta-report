@@ -170,7 +170,7 @@ function cleanSettings(s, prev = {}) {
     if (k === 'mat' && !(v >= 600 && v <= 1500)) throw new HttpError(400, 'Mat size should be between 600 and 1500 pixels.');
     if (k === 'pos' && !['top', 'bottom'].includes(v)) throw new HttpError(400, 'Banner position should be top or bottom.');
     if (k === 'cardSet' && !/^[A-Z0-9]{2,8}$/.test(v)) throw new HttpError(400, 'That set is not valid.');
-    if (k === 'format' && !['constructed', 'limited'].includes(v)) throw new HttpError(400, 'Format should be constructed or limited.');
+    if (k === 'format' && !['premier', 'limited', 'constructed'].includes(v)) throw new HttpError(400, 'Format should be Premier or Limited.');
     if (k === 'roundMins' && !(Number.isInteger(v) && v >= 10 && v <= 240)) throw new HttpError(400, 'Round length should be between 10 and 240 minutes.');
     if (k === 'layout' && !['sides', 'banner'].includes(v)) throw new HttpError(400, 'Layout should be sides or banner.');
     if (k === 'breakSlides' && !(Array.isArray(v) && v.length <= BREAK_SLIDES.length && v.every(x => BREAK_SLIDES.includes(x)) && new Set(v).size === v.length)) throw new HttpError(400, 'Those break screen slides are not valid.');

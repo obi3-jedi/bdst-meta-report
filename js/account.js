@@ -165,6 +165,19 @@ function mineView(el, full) {
     <p class="hint"><button class="linkbtn" type="button" data-go="">Or follow any melee.gg event without saving it</button></p></div>`;
 }
 
+// Event formats: choosing one sets up how decks are found and what the overlays show
+const ALL_SLIDES = ['upnext', 'standings', 'decks', 'race', 'bracket', 'recap', 'aspects'];
+const FORMATS = {
+  premier: { label: 'Premier', desc: 'Constructed decks. Leaders and bases come from the standings CSV (decklists). The break screen shows deck stats too.',
+    settings: { format: 'premier', breakSlides: ALL_SLIDES } },
+  limited: { label: 'Limited', desc: 'Sealed or draft, no decklists. Pick each featured player’s leader and base from the set on the Stream tab. The break screen skips deck stats.',
+    settings: { format: 'limited', breakSlides: ['upnext', 'standings', 'race', 'bracket', 'recap'] } },
+};
+const formatOf = s => s?.format === 'limited' ? 'limited' : 'premier';   // older events said "constructed"
+const formatPicker = (id, cur) => `<div class="fmt-pick" role="radiogroup" aria-label="Event format" id="${id}">${Object.entries(FORMATS).map(([k, f]) =>
+  `<button type="button" role="radio" data-v="${k}" aria-checked="${k === cur}"><b>${f.label}</b><small>${esc(f.desc)}</small></button>`).join('')}</div>`;
+function pickFormat(group, b) { for (const x of group.children) x.setAttribute('aria-checked', String(x === b)); }
+
 // Sets for Limited events, newest first (from cards.js)
 const limitedSets = () => Object.entries(window.SWU_CARDS?.sets || {}).filter(([code]) => Object.values(SWU_CARDS.leaders).some(c => (c.s || []).includes(code)))
   .sort((a, b) => String(b[1].d).localeCompare(String(a[1].d)));
@@ -175,6 +188,8 @@ function createView(el) {
   el.innerHTML = `<form class="hub-card hub-form" id="t-create" novalidate>
     <div class="hub-title"><h2>Create tournament</h2></div>
     <p class="hint">melee.gg runs the pairings and results. This saves the event and its stream settings so you and your team can open it in one click.</p>
+    <div class="fld"><span>What kind of event?</span>${formatPicker('tc-fmt', 'premier')}</div>
+    <label class="fld" id="tc-set-wrap" hidden><span>Set</span>${setSelect('tc-set', limitedSets()[0]?.[0])}</label>
     <label class="fld"><span>melee.gg link <em>required</em></span>
       <input id="tc-melee" type="url" inputmode="url" required placeholder="https://melee.gg/Tournament/View/457640" autocomplete="off">
       <small id="tc-found" aria-live="polite"></small></label>
@@ -186,9 +201,6 @@ function createView(el) {
     <div class="fld-row">
       <div class="fld"><span>Matches are</span><div class="seg" role="group" aria-label="Best of" id="tc-bo">
         <button type="button" data-v="1" aria-pressed="false">Best of 1</button><button type="button" data-v="3" aria-pressed="true">Best of 3</button></div></div>
-      <div class="fld"><span>Format</span><div class="seg" role="group" aria-label="Format" id="tc-fmt">
-        <button type="button" data-v="constructed" aria-pressed="true">Constructed</button><button type="button" data-v="limited" aria-pressed="false">Limited</button></div></div>
-      <label class="fld" id="tc-set-wrap" hidden><span>Set</span>${setSelect('tc-set', limitedSets()[0]?.[0])}</label>
       <label class="fld"><span>Top cut</span><select id="tc-cut"><option value="0">No cut</option><option value="4">Top 4</option><option value="8" selected>Top 8</option><option value="16">Top 16</option><option value="32">Top 32</option></select></label>
     </div>
     <div class="hub-actions"><button class="btn" type="submit" id="tc-go">Create tournament</button>
@@ -211,7 +223,7 @@ function createView(el) {
   };
   $('tc-melee').addEventListener('change', lookup);
   $('tc-melee').addEventListener('paste', () => setTimeout(lookup, 0));
-  $('tc-fmt').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; for (const x of $('tc-fmt').children) x.setAttribute('aria-pressed', String(x === b)); $('tc-set-wrap').hidden = b.dataset.v !== 'limited'; });
+  $('tc-fmt').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; pickFormat($('tc-fmt'), b); $('tc-set-wrap').hidden = b.dataset.v !== 'limited'; });
   $('tc-bo').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; for (const x of $('tc-bo').children) x.setAttribute('aria-pressed', String(x === b)); });
   $('t-create').addEventListener('submit', async e => {
     e.preventDefault();
@@ -222,7 +234,7 @@ function createView(el) {
       const t = await api('/t', { method: 'POST', body: {
         melee: $('tc-melee').value, name: $('tc-name').value, date: $('tc-date').value, venue: $('tc-venue').value,
         bestOf: Number($('tc-bo').querySelector('[aria-pressed="true"]').dataset.v), topCut: Number($('tc-cut').value),
-        settings: { format: $('tc-fmt').querySelector('[aria-pressed="true"]').dataset.v, ...($('tc-set-wrap').hidden ? {} : { cardSet: $('tc-set').value }) },
+        settings: (k => ({ ...FORMATS[k].settings, ...(k === 'limited' ? { cardSet: $('tc-set').value } : {}) }))($('tc-fmt').querySelector('[aria-checked="true"]').dataset.v),
       } });
       acct.tournaments.unshift(t);
       toast(`Created ${t.name}`);
@@ -468,7 +480,7 @@ function drawEvent(el = $('hub')) {
   el.innerHTML = `<div class="hub-card ev">
     <p class="hint"><button class="linkbtn" type="button" data-go="view=mine">← My tournaments</button></p>
     <div class="ev-head"><div><h2>${esc(t.name)}</h2>
-      <p class="ev-meta">${esc([fmtDate(t.date), t.venue, s.format === 'limited' ? `Limited${s.cardSet ? ' · ' + (window.SWU_CARDS?.sets?.[s.cardSet]?.n || s.cardSet) : ''}` : 'Constructed', `Best of ${t.bestOf}`, t.topCut ? `Top ${t.topCut}` : 'No cut'].filter(Boolean).join(' · '))} · <a href="https://melee.gg/Tournament/View/${t.meleeId}" target="_blank" rel="noopener">melee.gg ↗</a></p></div>
+      <p class="ev-meta">${esc([fmtDate(t.date), t.venue, formatOf(s) === 'limited' ? `Limited${s.cardSet ? ' · ' + (window.SWU_CARDS?.sets?.[s.cardSet]?.n || s.cardSet) : ''}` : 'Premier', `Best of ${t.bestOf}`, t.topCut ? `Top ${t.topCut}` : 'No cut'].filter(Boolean).join(' · '))} · <a href="https://melee.gg/Tournament/View/${t.meleeId}" target="_blank" rel="noopener">melee.gg ↗</a></p></div>
       <span class="t-role ${t.role}">${owner ? 'You own this' : 'Stream team'}</span></div>
 
     ${liveControlHtml(t)}
@@ -518,13 +530,14 @@ function drawEvent(el = $('hub')) {
             <label class="fld"><span>Store or venue</span><input id="ee-venue" maxlength="80" value="${esc(t.venue || '')}"></label></div>
           <div class="fld-row"><label class="fld"><span>Matches are</span><select id="ee-bo">${[1, 3].map(n => `<option value="${n}" ${t.bestOf === n ? 'selected' : ''}>Best of ${n}</option>`).join('')}</select></label>
             <label class="fld"><span>Top cut</span><select id="ee-cut">${[0, 4, 8, 16, 32].map(n => `<option value="${n}" ${t.topCut === n ? 'selected' : ''}>${n ? 'Top ' + n : 'No cut'}</option>`).join('')}</select></label></div>
-          <div class="fld"><span>Format</span><div class="seg" role="group" aria-label="Format" id="ee-fmt">
-            <button type="button" data-v="constructed" aria-pressed="${s.format !== 'limited'}">Constructed</button><button type="button" data-v="limited" aria-pressed="${s.format === 'limited'}">Limited</button></div></div>
-          <label class="fld" id="ee-set-wrap" ${s.format === 'limited' ? '' : 'hidden'}><span>Set (Limited)</span>${setSelect('ee-set', s.cardSet || limitedSets()[0]?.[0])}</label>
+          <div class="fld"><span>Format</span>${formatPicker('ee-fmt', formatOf(s))}</div>
+          <label class="fld" id="ee-set-wrap" ${formatOf(s) === 'limited' ? '' : 'hidden'}><span>Set (Limited)</span>${setSelect('ee-set', s.cardSet || limitedSets()[0]?.[0])}</label>
           <label class="fld"><span>melee.gg link</span><input id="ee-melee" type="url" value="https://melee.gg/Tournament/View/${t.meleeId}"></label>
           <div class="hub-actions"><button class="btn ghost sm" type="submit">Save changes</button><span class="hint" id="ee-msg" aria-live="polite"></span></div>
         </form>
-        <p class="hint">Decklists: upload the event’s standings CSV (top of the page), then <b>Share decklists</b> in Organiser tools so the overlay and your team see decks.</p>
+        <p class="hint">${formatOf(s) === 'limited'
+          ? 'Decks: pick each player’s leader and base on the <b>Stream</b> tab → <b>Decks</b>. Uploading the standings CSV is optional (it has no decks in Limited).'
+          : 'Decklists: upload the event’s standings CSV (top of the page), then <b>Share decklists</b> in Organiser tools so the overlay and your team see decks.'}</p>
         <p class="danger"><button class="linkbtn" type="button" data-acct="delete">Delete tournament</button></p>`, { closed: true }) : ''}
     </div></div>`;
 
@@ -559,12 +572,15 @@ function drawEvent(el = $('hub')) {
   });
   $('ev-sec')?.addEventListener('change', e => saveSettings({ breakSeconds: Math.max(5, Math.min(120, Math.round(Number(e.target.value)) || 15)) }));
   $('ee-fmt')?.addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return;
-    for (const x of $('ee-fmt').children) x.setAttribute('aria-pressed', String(x === b));
-    const lim = b.dataset.v === 'limited';
+    const b = e.target.closest('button'); if (!b || b.getAttribute('aria-checked') === 'true') return;
+    pickFormat($('ee-fmt'), b);
+    const k = b.dataset.v, lim = k === 'limited';
     $('ee-set-wrap').hidden = !lim;
-    saveSettings(lim ? { format: 'limited', cardSet: $('ee-set').value } : { format: 'constructed' });
+    // Switching format sets up that format's structure (decks source, Stream tab, break screen slides)
+    saveSettings({ ...FORMATS[k].settings, ...(lim ? { cardSet: $('ee-set').value } : {}) });
+    toast(`Set up for ${FORMATS[k].label}: ${lim ? 'pick decks on the Stream tab → Decks; the break screen skips deck stats' : 'decks from the standings CSV; the break screen shows deck stats'}.`);
     state.fpTab = null; if (state.view) renderFeaturePicker();
+    drawEvent();
   });
   $('ee-set')?.addEventListener('change', e => { saveSettings({ cardSet: e.target.value }); if (state.view) renderFeaturePicker(); });
   $('ev-edit')?.addEventListener('submit', async e => {
