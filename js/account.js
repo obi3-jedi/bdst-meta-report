@@ -278,6 +278,7 @@ function liveControlHtml(t) {
   const prog = overlayUrl('program', t);
   const showPrev = store(true, 'bdst-lc-preview') !== 'off';
   return foldBox('lc', 'Live control', `
+    <div class="lc-replay" id="lc-replay" hidden></div>
     <div class="lc-main ${showPrev ? '' : 'no-prev'}">
       ${showPrev ? `<div class="lc-prev"><div class="lc-slot" id="lc-slot"></div><span class="lc-cam" aria-hidden="true">camera</span></div>` : ''}
       <div class="lc-groups">${SCENES.map(g => `<div class="lc-group"><h4>${g.group}</h4><div class="lc-btns">${g.items.map(i =>
@@ -287,7 +288,8 @@ function liveControlHtml(t) {
     </div>
     <div class="copyline"><code>${esc(prog.replace(/k=[a-f0-9]+/, 'k=••••••'))}</code><button class="btn ghost sm" type="button" data-copy="${esc(prog)}">Copy OBS link</button></div>
     <p class="hint">The <b>only link OBS needs</b>: add it as a Browser Source (1920 × 1080) above your camera. Anyone on the stream team can switch scenes from any browser; the stream changes within a second. Keep it private.
-      <button class="linkbtn" type="button" data-acct="toggle-preview">${showPrev ? 'Hide preview' : 'Show preview'}</button></p>`,
+      <button class="linkbtn" type="button" data-acct="toggle-preview">${showPrev ? 'Hide preview' : 'Show preview'}</button></p>
+    <label class="switch"><input type="checkbox" id="lc-follow-replay" ${followReplayOn() ? 'checked' : ''}><span class="track-sw" aria-hidden="true"></span>When I pick “Show the event as it was after” an earlier round, show that on stream too</label>`,
     { cls: 'live-ctl', head: `<span class="lc-onair" id="lc-onair" aria-live="polite"></span><span class="lc-conn" id="lc-conn" title="Connection to the stream">Connecting…</span>` });
 }
 // A box with a minimise arrow; open or closed is remembered in this browser
@@ -332,7 +334,30 @@ function startLive(t) {
   acct.live = live;
 }
 function stopLive() { if (acct.live) { acct.live.stop(); acct.live = null; } }
+// Replays on stream: the asof selector (Follow live) also sets what the stream shows, unless switched off
+const followReplayOn = () => store(true, 'bdst-lc-follow-replay') !== 'off';
+document.addEventListener('change', e => { if (e.target.id === 'lc-follow-replay') store(false, 'bdst-lc-follow-replay', e.target.checked ? '' : 'off'); });
+async function streamFollowReplay(roundId) {
+  const t = openTournament(); if (!t || !canStream() || !followReplayOn()) return;
+  if ((acct.live?.value?.asOf || null) === (roundId || null)) return;
+  try {
+    const v = await saveStreamAsOf(t.meleeId, roundId);
+    if (acct.live) acct.live.value = v;
+    markScene();
+    const r = roundId && state.live?.rounds.find(x => x.id === Number(roundId));
+    toast(r ? `The stream now shows the event as it was after ${r.name}.` : 'The stream is back to live.');
+  } catch (e) { toast(e.message); }
+}
+function markReplay() {
+  const el = $('lc-replay'); if (!el) return;
+  const id = acct.live?.value?.asOf || acct.live?.value?.round || null;
+  const r = id && state.live?.rounds.find(x => x.id === Number(id));
+  el.hidden = !id;
+  el.innerHTML = id ? `<span><b>Replay on stream:</b> everything shows the event as it was after <b>${esc(r?.name || 'an earlier round')}</b>.</span>
+    <button class="btn sm" type="button" data-acct="stream-live">Back to live</button>` : '';
+}
 function markScene() {
+  markReplay();
   const sc = acct.live?.value?.scene || acct.pendingScene || null;
   const key = acct.pendingScene ? sceneKey(acct.pendingScene) : sceneKey(sc);
   document.querySelectorAll('[data-scene]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scene === key)));
@@ -558,6 +583,13 @@ document.addEventListener('click', async e => {
   if (what === 'signout') return signOut();
   if (what === 'menu') { const pop = document.querySelector('.acct-pop'); pop.hidden = !pop.hidden; a.setAttribute('aria-expanded', String(!pop.hidden)); return; }
   if (what === 'mine' || what === 'new') { document.querySelector('.acct-pop').hidden = true; go({ view: what }); return; }
+  if (what === 'stream-live') {
+    const t = acct.current; if (!t) return;
+    try { const v = await saveStreamAsOf(t.meleeId, null); if (acct.live) acct.live.value = v; markScene(); toast('The stream is back to live.'); }
+    catch (err) { toast(err.message); }
+    if (state.asOf && String(state.liveId) === String(t.meleeId)) { $('asof').value = ''; setAsOf(null); }
+    return;
+  }
   if (what === 'toggle-preview') { store(false, 'bdst-lc-preview', store(true, 'bdst-lc-preview') === 'off' ? '' : 'off'); const f = $('lc-frame'); if (f) f.remove(); drawEvent(); return; }
   if (what === 'controls') { selectTab('stream'); $('tabs').scrollIntoView({ behavior: 'smooth' }); return; }
   if (what === 'invite') {

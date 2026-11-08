@@ -385,15 +385,15 @@
   const usesFeature = ['feature', 'break', 'program'].includes(linkType);
   async function applyFeature(sel) {
     if (!sel) return;
-    const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, show: x?.show ?? null });
+    const sig = x => JSON.stringify({ table: x?.table ?? null, player: x?.player ?? null, round: x?.round ?? null, asOf: x?.asOf ?? null, show: x?.show ?? null });
     const sceneSig = x => JSON.stringify(x?.scene ?? null);
     const selChanged = sig(sel) !== sig(featureSel), sceneChanged = sceneSig(sel) !== sceneSig(featureSel);
     if (!selChanged && !sceneChanged) return;
     const first = featureSel === null;
     featureSel = sel;
     if (selChanged) {
-      // A choice picked while replaying an earlier round shows that round, as it was then
-      state.asOf = sel.round || null;
+      // Replaying an earlier round (from Live control), or a match picked while replaying: show it as it was then
+      state.asOf = sel.asOf || sel.round || null;
       if (state.live && state.asOf) { const v = computeView(); try { await ensureStandings([v.at?.id, v.prev?.id]); } catch (e) {} }
     }
     if (!(state.view || state.live)) return;

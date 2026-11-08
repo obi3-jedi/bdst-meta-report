@@ -22,7 +22,8 @@
 //   GET /feature/:tid/live   (WebSocket) the same value, pushed whenever it changes
 //   PUT /feature/:tid        (organiser) { table } or { player }, optionally { round } to pin a past round;
 //                            or { match, swap, wins } to swap sides / set game wins for the match on stream;
-//                            or { scene: { mode: camera|feature|break|slide|hold, slide?, title?, until? } } for the program link
+//                            or { scene: { mode: camera|feature|break|slide|hold, slide?, title?, until? } } for the program link;
+//                            or { asOf: <roundId> | null } to show everything as it was after an earlier round
 //                            (or {} to go back to the overlay link's table)
 //
 // The feature match choice lives in a Durable Object (binding FEATURE) so a change shows on stream within seconds;
@@ -312,6 +313,12 @@ async function feature(request, env, tid, origin) {
     const body = await readBody(request);
     const cur = await (await stub.fetch('https://do/feature')).json();
     const save = async value => json({ tid: Number(tid), ...(await (await stub.fetch('https://do/feature', { method: 'PUT', body: JSON.stringify({ ...value, updated: new Date().toISOString() }) })).json()) }, 200, origin, 0);
+    // Replay: show the whole stream as it was after an earlier round ({ asOf: <roundId> }), or live again ({ asOf: null })
+    if ('asOf' in body && body.table == null && body.player == null && body.match == null && !body.scene) {
+      if (body.asOf !== null && !/^\d{1,12}$/.test(String(body.asOf))) return json({ error: 'That round is not valid.' }, 400, origin, 0);
+      const { round, asOf, ...rest } = cur;
+      return save(body.asOf === null ? rest : { ...rest, asOf: Number(body.asOf) });
+    }
     // Switch the program scene: { scene: { mode, slide?, title?, until? } }
     if (body.scene && body.table == null && body.player == null && body.match == null) return save({ ...cur, scene: cleanScene(body.scene) });
     // On-stream tweaks for the match showing now: { match: "<roundId>|<table>", swap, wins: { <playerId>: n } }.
@@ -329,7 +336,7 @@ async function feature(request, env, tid, origin) {
       return save({ ...cur, show });
     }
     // A new feature match choice (the scene carries over)
-    const value = cur.scene ? { scene: cur.scene } : {};
+    const value = { ...(cur.scene ? { scene: cur.scene } : {}), ...(cur.asOf ? { asOf: cur.asOf } : {}) };
     if (body.table != null && /^\d{1,4}$/.test(String(body.table))) value.table = Number(body.table);
     else if (body.player != null && /^\d{1,12}$/.test(String(body.player))) value.player = String(body.player);
     // A choice made while replaying an earlier round pins the overlay to that round

@@ -738,3 +738,7 @@ body.on-hub-page header { align-items: center; }
 .ev-head { margin-bottom: 16px; }
 .ovl > .fold-b { display: grid; gap: 8px; margin-top: 4px; }
 .ovl > .fold-b > .overlays { margin-top: 4px; }
+.lc-replay { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; padding: 10px 14px; border-radius: 8px; background: rgba(230, 185, 58, .12); border: 1px solid rgba(230, 185, 58, .5); font-size: 14px; }
+.lc-replay[hidden] { display: none; }
+.lc-replay span { flex: 1 1 260px; }
+.live-ctl > .fold-b > .switch { margin-top: 6px; }

@@ -562,3 +562,7 @@ function liveFeature(tid, onValue) {
 async function saveScene(tid, scene) {
   return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ scene }) });
 }
+// Show the whole stream as it was after an earlier round (null: live again)
+async function saveStreamAsOf(tid, roundId) {
+  return relay('/feature/' + tid, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ asOf: roundId ? Number(roundId) : null }) });
+}

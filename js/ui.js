@@ -635,7 +635,7 @@ function featureMatch() {
 
 // ---------- feature match on stream ----------
 // The round the stream overlay shows: the round a choice was pinned to (picked while replaying), else the current one.
-const streamRoundId = () => state.featureSel?.round || state.view?.current?.id || state.view?.at?.id;
+const streamRoundId = () => state.featureSel?.asOf || state.featureSel?.round || state.view?.current?.id || state.view?.at?.id;
 const onStream = (round, x) => {
   const m = pickFeatureMatch([x], state.featureSel);
   return !!m;
@@ -849,6 +849,7 @@ async function setAsOf(roundId) {
     catch (e) { setLiveStatus(esc(e.message), true); }
   }
   render();
+  streamFollowReplay(state.asOf);
 }
 
 function follow(tid) {
